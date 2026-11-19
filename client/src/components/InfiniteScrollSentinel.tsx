@@ -60,7 +60,7 @@ export function InfiniteScrollSentinel({ onLoadMore, isLoading, hasMore }: Infin
   if (!hasMore && !isLoading) {
     return (
       <div className="flex justify-center py-6" data-testid="text-end-of-feed">
-        <p className="text-xs text-muted-foreground/70">
+        <p className="text-xs text-muted-foreground">
           You've reached the end
         </p>
       </div>

@@ -92,7 +92,7 @@ function FieldInfo({ title, body, testId }: { title: string; body: React.ReactNo
         <button
           type="button"
           aria-label={`What is ${title}?`}
-          className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all text-foreground/60 bg-foreground/[0.06] hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+          className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full transition-all text-foreground bg-foreground/[0.06] hover:bg-foreground/10 focus-visible:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           data-testid={testId}
         >
           <Info className="w-3.5 h-3.5" />
@@ -861,7 +861,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
           : "";
         const fieldInputCls = `${inputCls} h-11 transition-shadow focus-visible:ring-2 focus-visible:ring-foreground/25 focus-visible:border-foreground/30`;
         const optionalBadge = (
-          <span className="text-[11px] px-1 py-px rounded-sm leading-none font-medium text-foreground/65 bg-foreground/[0.04] border border-border/40">Optional</span>
+          <span className="text-xs px-1 py-px rounded-sm leading-none font-medium text-foreground bg-foreground/[0.04] border border-border/40">Optional</span>
         );
         const labelBase = `text-xs font-brand uppercase tracking-widest flex items-center gap-1.5 ${subtleCls}`;
         return (
@@ -947,7 +947,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                     </button>
                     <button
                       type="button"
-                      className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-black/55 hover:bg-black/75 text-white/85 hover:text-white rounded-full backdrop-blur-sm shadow-md transition-colors"
+                      className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-black/55 hover:bg-black/75 text-white hover:text-white rounded-full backdrop-blur-sm shadow-md transition-colors"
                       onClick={(e) => { e.stopPropagation(); setBannerLoaded(false); setBanner(""); }}
                       data-testid="button-remove-banner"
                       aria-label="Remove banner"
@@ -1016,18 +1016,18 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                     ) : (
                       <>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs font-medium leading-tight text-foreground/85">Profile photo</p>
+                          <p className="text-xs font-medium leading-tight text-foreground">Profile photo</p>
                           <button
                             type="button"
                             onClick={() => { setPicture(""); setAvatarSeed(newSeed()); }}
-                            className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"
+                            className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors bg-foreground/[0.06] text-foreground hover:bg-foreground/[0.1]"
                             data-testid="button-shuffle-avatar"
                             aria-label="Show another photo"
                           >
                             <Shuffle className="w-3 h-3" /> Shuffle
                           </button>
                         </div>
-                        <p className={`text-[11px] sm:text-xs mt-1 leading-snug ${subtleCls}`}>
+                        <p className={`text-xs mt-1 leading-snug ${subtleCls}`}>
                           Or tap the photo to use your own. Change it any time.
                         </p>
                       </>
@@ -1050,7 +1050,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                   <button
                     type="button"
                     onClick={() => { const n = friendlyName(seededRandom(newSeed())); setSuggestedName(n); setDisplayName(n); }}
-                    className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors bg-foreground/[0.06] text-foreground/80 hover:bg-foreground/[0.1]"
+                    className="hit-area inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors bg-foreground/[0.06] text-foreground hover:bg-foreground/[0.1]"
                     data-testid="button-shuffle-name"
                     aria-label="Suggest another name"
                   >
@@ -1113,7 +1113,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm sm:text-xs font-semibold tracking-tight text-foreground">Add more details</p>
-                  <p className={`text-xs sm:text-[11px] mt-0.5 sm:hidden ${subtleCls}`}>
+                  <p className={`text-xs mt-0.5 sm:hidden ${subtleCls}`}>
                     Username, verified address, featured link, Bitcoin tips — all optional.
                   </p>
                 </div>
@@ -1213,7 +1213,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                     />
                     {featuredLinkInfo.type ? (
                       <div
-                        className="inline-flex items-center gap-1.5 mt-0.5 text-[11px] px-2 py-0.5 rounded-full font-medium bg-foreground/[0.05] border border-border/60 text-foreground/80"
+                        className="inline-flex items-center gap-1.5 mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium bg-foreground/[0.05] border border-border/60 text-foreground"
                         data-testid="text-featured-link-type"
                       >
                         {featuredLinkInfo.type === "rss" && <Rss className="w-3 h-3" />}
@@ -1389,7 +1389,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                           <button
                             type="button"
                             onClick={handleSuggestPassphrase}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-colors text-foreground/85 hover:text-foreground hover:bg-foreground/[0.06] border border-border/60"
+                            className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md transition-colors text-foreground hover:bg-foreground/[0.06] border border-border/60"
                             data-testid="button-suggest-passphrase"
                           >
                             <Dice5 className="w-3 h-3" /> Suggest 6 random words
@@ -1500,7 +1500,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                     <div className="px-3 py-3 space-y-3 border-t border-border/40 bg-foreground/[0.02]">
                       <div className="space-y-1.5">
                         <p className={`text-[13px] font-bold ${subtleCls}`}>Your address</p>
-                        <code className="block text-[11px] break-all font-mono text-foreground/80" data-testid="text-new-npub">{account.npub}</code>
+                        <code className="block text-xs break-all font-mono text-foreground" data-testid="text-new-npub">{account.npub}</code>
                         <Button size="sm" variant="outline" onClick={handleCopyNpub} className="h-8 text-[13px] font-medium" data-testid="button-copy-npub">
                           {copiedNpub ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                           {copiedNpub ? "Copied" : "Copy"}
@@ -1522,7 +1522,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                           </div>
                         </button>
                         <div className="px-3 py-2.5 space-y-2 border-t border-border/40 bg-foreground/[0.02]">
-                          <code className="block text-xs break-all font-mono p-2 rounded select-all bg-background text-foreground/80" data-testid="text-step3-nsec">
+                          <code className="block text-xs break-all font-mono p-2 rounded select-all bg-background text-foreground" data-testid="text-step3-nsec">
                             {showNsec ? account.nsec : "•".repeat(24)}
                           </code>
                           <Button size="sm" variant="outline" onClick={handleCopyNsec} className="w-full text-xs font-medium" data-testid="button-copy-nsec-step3">
@@ -1536,11 +1536,11 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                   )}
                 </div>
 
-                <p className={`text-[10px] leading-relaxed ${subtleCls}`} data-testid="text-create-legal-links">
+                <p className={`text-xs leading-relaxed ${subtleCls}`} data-testid="text-create-legal-links">
                   By continuing you accept our{" "}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground/80" data-testid="link-create-covenant">Terms</a>
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2" data-testid="link-create-covenant">Terms</a>
                   {" "}and{" "}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground/80" data-testid="link-create-privacy">Privacy</a>
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-dotted underline-offset-2" data-testid="link-create-privacy">Privacy</a>
                   . Your key is yours — if you lose it, no one can recover it for you.
                 </p>
 
@@ -1549,7 +1549,7 @@ export function CreateAccountFlow({ onBack, onComplete }: Props) {
                     type="button"
                     onClick={() => setKeySkipped(true)}
                     disabled={keySkipped}
-                    className={`block text-[11px] underline decoration-dotted underline-offset-2 text-left ${subtleCls} disabled:no-underline disabled:opacity-80`}
+                    className={`block text-xs underline decoration-dotted underline-offset-2 text-left ${subtleCls} disabled:no-underline disabled:opacity-80`}
                     data-testid="button-skip-key"
                   >
                     {keySkipped ? `Skipped — we'll remind you in Chats` : `Skip for now — I accept ${who} could be lost`}

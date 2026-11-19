@@ -42,7 +42,7 @@ function Row({ icon, label, onClick, danger, trailing, chevron = true, testId }:
       className={`w-full flex items-center gap-3.5 px-4 min-h-[54px] text-left transition-colors active:bg-foreground/[0.06] hover:bg-foreground/[0.04] ${danger ? "text-danger" : ""}`}
       data-testid={testId}
     >
-      <span className={`shrink-0 ${danger ? "" : "text-foreground/70"}`}>{icon}</span>
+      <span className={`shrink-0 ${danger ? "" : "text-foreground"}`}>{icon}</span>
       <span className="flex-1 text-[15px] font-medium">{label}</span>
       {trailing}
       {chevron && !danger && <ChevronRight className="w-4 h-4 text-foreground/30 shrink-0" />}
@@ -123,7 +123,7 @@ export default function Account() {
           {loginMethodLabel && (
             <span className="mt-1 flex items-center gap-1.5">
               <LoginMethodIcon className="w-3 h-3 text-muted-foreground/70" />
-              <span className="text-[12px] text-muted-foreground/80">{loginMethodLabel}</span>
+              <span className="text-[12px] text-muted-foreground">{loginMethodLabel}</span>
             </span>
           )}
         </div>
@@ -148,7 +148,7 @@ export default function Account() {
               label="Save your key"
               onClick={go("/key-backup")}
               trailing={
-                <span className={`text-[11px] font-medium ${keyBackup.status === "not-saved" ? "text-amber-700 dark:text-amber-400" : "text-success"}`} data-testid="account-key-backup-status">
+                <span className={`text-xs font-medium ${keyBackup.status === "not-saved" ? "text-amber-700 dark:text-amber-400" : "text-success"}`} data-testid="account-key-backup-status">
                   {keyBackup.status === "not-saved" ? "Not saved" : keyBackup.status === "saved" ? "Saved" : "Saved and checked"}
                 </span>
               }

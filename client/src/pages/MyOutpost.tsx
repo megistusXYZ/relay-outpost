@@ -1364,9 +1364,9 @@ export default function MyOutpost() {
   if (!pubkey) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 py-16 text-center" data-testid="page-myoutpost-signin">
-        <Satellite className="w-12 h-12 text-muted-foreground/30 mb-4" />
+        <Satellite className="w-12 h-12 text-muted-foreground mb-4" />
         <h2 className="text-[20px] font-semibold text-foreground mb-2">No community yet</h2>
-        <p className="text-sm text-muted-foreground/60 max-w-sm mb-6">
+        <p className="text-sm text-muted-foreground max-w-sm mb-6">
           Sign in to set up your community. Your identity, your people, your posts — all in one place.
         </p>
         <Button variant="default" className="gap-2 font-medium" asChild data-testid="button-signin-prompt">
@@ -1484,7 +1484,7 @@ export default function MyOutpost() {
                   </p>
                   {profileContent?.nip05 && pubkey && (
                     <div className="hidden min-[420px]:block">
-                      <Nip05Badge nip05={profileContent.nip05} pubkey={pubkey} className="text-[10px] font-mono" textClassName="text-muted-foreground truncate" iconClassName="w-3 h-3" />
+                      <Nip05Badge nip05={profileContent.nip05} pubkey={pubkey} className="text-xs font-mono" textClassName="text-muted-foreground truncate" iconClassName="w-3 h-3" />
                     </div>
                   )}
                 </div>
@@ -1497,7 +1497,7 @@ export default function MyOutpost() {
           <button
             type="button"
             onClick={() => setHeaderCollapsed(true)}
-            className="absolute bottom-3 right-3 z-20 flex items-center justify-center w-9 h-9 rounded-full bg-black/40 border border-white/20 text-white/85 hover:text-white hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
+            className="absolute bottom-3 right-3 z-20 flex items-center justify-center w-9 h-9 rounded-full bg-black/40 border border-white/20 text-white hover:text-white hover:bg-black/55 active:scale-95 transition-[background-color,color,transform]"
             aria-expanded
             aria-label="Condense header"
             title="Condense header"
@@ -1546,28 +1546,28 @@ export default function MyOutpost() {
                   <div className="flex items-start gap-2.5 min-w-0">
                     <BrainstormIcon className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5 drop-shadow-[0_0_4px_rgba(52,211,153,0.3)]" />
                     <div className="min-w-0">
-                      <span className="text-[11px] font-bold text-white/95 block leading-snug whitespace-nowrap">
+                      <span className="text-xs font-bold text-white/95 block leading-snug whitespace-nowrap">
                         Trust service provider
                       </span>
-                      <p className="text-[9px] text-white/55 leading-snug">NIP-85 Declaration</p>
+                      <p className="text-xs text-white leading-snug">NIP-85 Declaration</p>
                       {recalculating ? (
-                        <p className="text-[9px] text-brand/70 leading-snug inline-flex items-center gap-1 whitespace-nowrap">
+                        <p className="text-xs text-brand leading-snug inline-flex items-center gap-1 whitespace-nowrap">
                           <RelayOutpostInlineLoader className="w-2.5 h-2.5" />
                           Recalculating… ~15-20 min
                         </p>
                       ) : (
-                        <p className="text-[9px] text-white/45 leading-snug whitespace-nowrap">Updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}</p>
+                        <p className="text-xs text-white leading-snug whitespace-nowrap">Updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(13,15,18,0.15)]" : "text-success dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
+                    <span className={`text-xs font-bold rounded-full px-2 py-0.5 leading-none ${recalculating ? "text-brand bg-brand/10 border border-brand/20 shadow-[0_0_6px_rgba(13,15,18,0.15)]" : "text-success dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_6px_rgba(52,211,153,0.15)]"}`}>{recalculating ? "Processing" : "Active"}</span>
                     {recalculating ? (
                       <a
                         href="https://brainstorm.nosfabrica.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[9px] font-semibold text-muted-foreground/50 hover:text-brand transition-colors"
+                        className="text-xs font-semibold text-muted-foreground hover:text-brand transition-colors"
                       >
                         View on Brainstorm
                       </a>
@@ -1575,7 +1575,7 @@ export default function MyOutpost() {
                       <button
                         onClick={requestRecalc}
                         disabled={triggeringWot || !pubkey}
-                        className="text-[9px] font-semibold text-brand hover:text-brand-strong transition-colors disabled:opacity-50"
+                        className="text-xs font-semibold text-brand hover:text-brand-strong transition-colors disabled:opacity-50"
                         data-testid="button-recalculate-wot-command"
                       >
                         {triggeringWot ? "Starting…" : "Recalculate"}
@@ -1584,15 +1584,15 @@ export default function MyOutpost() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 border-t border-white/[0.06] bg-white/[0.02]">
-                  <span className="text-[11px] text-white/50 font-medium shrink-0">Also works with</span>
+                  <span className="text-xs text-white font-medium shrink-0">Also works with</span>
                   <div className="flex items-center gap-2 ml-auto">
                     <a href="https://amethyst.social/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-75 hover:opacity-100 transition-opacity" title="Amethyst">
                       <img src={amethystLogo} alt="Amethyst" className="w-3.5 h-3.5 rounded-sm" />
-                      <span className="text-[9px] text-white/60 font-medium">Amethyst</span>
+                      <span className="text-xs text-white font-medium">Amethyst</span>
                     </a>
                     <a href="https://www.nostria.app/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-75 hover:opacity-100 transition-opacity" title="Nostria">
                       <img src={nostriaLogo} alt="Nostria" className="w-3.5 h-3.5 rounded-sm" />
-                      <span className="text-[9px] text-white/60 font-medium">Nostria</span>
+                      <span className="text-xs text-white font-medium">Nostria</span>
                     </a>
                   </div>
                 </div>
@@ -1601,19 +1601,19 @@ export default function MyOutpost() {
               <button
                 type="button"
                 onClick={() => setShowWotInfo(true)}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/80 hover:text-white transition-colors border border-emerald-500/25 cursor-pointer hover:border-emerald-500/40 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white hover:text-white transition-colors border border-emerald-500/25 cursor-pointer hover:border-emerald-500/40 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
               >
                 <BrainstormIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0 drop-shadow-[0_0_4px_rgba(52,211,153,0.3)]" />
                 {recalculating ? (
                   <>
                     <RelayOutpostInlineLoader className="w-2.5 h-2.5" />
-                    <span className="normal-case tracking-normal text-brand/80">Processing</span>
+                    <span className="normal-case tracking-normal text-brand">Processing</span>
                   </>
                 ) : (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.4)] shrink-0" />
                     Trust on
-                    <span className="normal-case tracking-normal text-white/40 hidden sm:inline">· {formatGrapeRankTime(connectionScoresData.lastCalculated)}</span>
+                    <span className="normal-case tracking-normal text-white hidden sm:inline">· {formatGrapeRankTime(connectionScoresData.lastCalculated)}</span>
                   </>
                 )}
               </button>
@@ -1622,7 +1622,7 @@ export default function MyOutpost() {
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-amber-500/20 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white hover:text-white/80 transition-colors border border-amber-500/20 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               Trust paused
@@ -1634,17 +1634,17 @@ export default function MyOutpost() {
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/70 hover:text-white/90 transition-colors border border-brand/25 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white hover:text-white/90 transition-colors border border-brand/25 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
               data-testid="badge-wot-building"
             >
               <RelayOutpostInlineLoader className="w-2.5 h-2.5" />
-              <span className="normal-case tracking-normal text-brand/90">Building trust network · ~15-20 min</span>
+              <span className="normal-case tracking-normal text-brand">Building trust network · ~15-20 min</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setShowWotInfo(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white/50 hover:text-white/80 transition-colors border border-white/[0.08] cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold bg-[rgba(10,10,20,0.75)] dark:bg-[rgba(8,8,18,0.8)] backdrop-blur-xl text-white hover:text-white/80 transition-colors border border-white/[0.08] cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             >
               <BrainstormIcon className="w-3.5 h-3.5 text-white/50" />
               Trust offline
@@ -1774,18 +1774,18 @@ export default function MyOutpost() {
         ) : (
           <div className={headerCondensed ? "hidden" : "mt-3 space-y-3"}>
             {profileContent?.about && (
-              <p className="text-sm text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap leading-relaxed" data-testid="text-outpost-about">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed" data-testid="text-outpost-about">
                 {profileContent.about}
               </p>
             )}
 
-            <div className="flex flex-col gap-1.5 text-xs text-foreground/60 dark:text-foreground/50" data-testid="container-outpost-meta">
+            <div className="flex flex-col gap-1.5 text-xs text-foreground" data-testid="container-outpost-meta">
               {profileContent?.website && (
                 <a
                   href={profileContent.website.startsWith("http") ? profileContent.website : `https://${profileContent.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 hover:text-foreground/80 transition-colors w-fit"
+                  className="inline-flex items-center gap-2 transition-colors w-fit"
                   data-testid="link-website"
                 >
                   <Globe className="w-3.5 h-3.5 shrink-0 text-brand/60" />
@@ -1800,7 +1800,7 @@ export default function MyOutpost() {
               )}
               <button
                 onClick={handleCopyNpub}
-                className="inline-flex items-center gap-2 font-mono hover:text-foreground/80 transition-colors cursor-pointer w-fit"
+                className="inline-flex items-center gap-2 font-mono transition-colors cursor-pointer w-fit"
                 data-testid="button-copy-npub"
               >
                 <img src={nostrOstrich} alt="" className="w-3.5 h-3.5 shrink-0 opacity-60" />
@@ -1826,9 +1826,9 @@ export default function MyOutpost() {
                           onClick={() => setBadgesExpanded(!badgesExpanded)}
                           aria-expanded={badgesExpanded}
                           aria-label={`Show ${rest.length} more community${rest.length > 1 ? "s" : ""}`}
-                          className="inline-flex items-center gap-0.5 text-brand/50 hover:text-brand/80 transition-colors shrink-0"
+                          className="inline-flex items-center gap-0.5 text-brand transition-colors shrink-0"
                         >
-                          <span className="text-[10px]">+{rest.length} more</span>
+                          <span className="text-xs">+{rest.length} more</span>
                           <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${badgesExpanded ? "rotate-180" : ""}`} />
                         </button>
                       )}
@@ -2066,9 +2066,9 @@ export default function MyOutpost() {
                   </div>
                   <DialogDescription className="sr-only">What Web of Trust does for your Community</DialogDescription>
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-foreground/50 leading-snug">NIP-85 Declaration · Updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}</p>
+                    <p className="text-xs text-foreground leading-snug">NIP-85 Declaration · Updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}</p>
                   </div>
-                  <p className="text-xs text-foreground/70 dark:text-foreground/60 leading-relaxed">
+                  <p className="text-xs text-foreground leading-relaxed">
                     Your personalized trust scores are live. Here's what that unlocks:
                   </p>
                 </>
@@ -2079,7 +2079,7 @@ export default function MyOutpost() {
                     <DialogTitle className="text-sm font-bold text-foreground">Web of Trust Paused</DialogTitle>
                   </div>
                   <DialogDescription className="sr-only">Your Web of Trust scores are paused</DialogDescription>
-                  <p className="text-xs text-foreground/70 dark:text-foreground/60 leading-relaxed">
+                  <p className="text-xs text-foreground leading-relaxed">
                     Your trust scores are saved (last updated {formatGrapeRankTime(connectionScoresData.lastCalculated)}) but currently paused. Trust dots, signal checks, and spam filtering are off.
                   </p>
                   <button
@@ -2097,7 +2097,7 @@ export default function MyOutpost() {
                     <DialogTitle className="text-sm font-bold text-foreground">What is Web of Trust?</DialogTitle>
                   </div>
                   <DialogDescription className="sr-only">How Web of Trust enhances your Community</DialogDescription>
-                  <p className="text-xs text-foreground/70 dark:text-foreground/60 leading-relaxed">
+                  <p className="text-xs text-foreground leading-relaxed">
                     Calculate your trust scores to unlock these enhancements:
                   </p>
                 </>
@@ -2106,29 +2106,29 @@ export default function MyOutpost() {
                 <div className="flex items-start gap-2 sm:gap-2.5">
                   <Filter className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground/90 dark:text-foreground/80">Smarter Feeds</p>
-                    <p className="text-[10px] text-foreground/55 dark:text-foreground/45 leading-relaxed">Trusted content surfaces higher in your feeds.</p>
+                    <p className="text-xs font-semibold text-foreground">Smarter Feeds</p>
+                    <p className="text-xs text-foreground leading-relaxed">Trusted content surfaces higher in your feeds.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 sm:gap-2.5">
                   <Search className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground/90 dark:text-foreground/80">Clearer Search</p>
-                    <p className="text-[10px] text-foreground/55 dark:text-foreground/45 leading-relaxed">See trust scores on profiles so you know who's legit at a glance.</p>
+                    <p className="text-xs font-semibold text-foreground">Clearer Search</p>
+                    <p className="text-xs text-foreground leading-relaxed">See trust scores on profiles so you know who's legit at a glance.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 sm:gap-2.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground/90 dark:text-foreground/80">Verified vs Unknown</p>
-                    <p className="text-[10px] text-foreground/55 dark:text-foreground/45 leading-relaxed">Following and Followers show trust badges — spot who's trusted and who's unscored.</p>
+                    <p className="text-xs font-semibold text-foreground">Verified vs Unknown</p>
+                    <p className="text-xs text-foreground leading-relaxed">Following and Followers show trust badges — spot who's trusted and who's unscored.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 sm:gap-2.5">
                   <Signal className="w-3.5 h-3.5 text-brand mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground/90 dark:text-foreground/80">Spam Protection</p>
-                    <p className="text-[10px] text-foreground/55 dark:text-foreground/45 leading-relaxed">Low-trust accounts get flagged automatically. Your relay stays clean.</p>
+                    <p className="text-xs font-semibold text-foreground">Spam Protection</p>
+                    <p className="text-xs text-foreground leading-relaxed">Low-trust accounts get flagged automatically. Your relay stays clean.</p>
                   </div>
                 </div>
               </div>
@@ -2136,7 +2136,7 @@ export default function MyOutpost() {
                 <button
                   onClick={requestRecalc}
                   disabled={triggeringWot || recalculating || !pubkey}
-                  className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-brand hover:text-brand/80 dark:hover:text-brand transition-colors py-1 disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-brand dark:hover:text-brand transition-colors py-1 disabled:opacity-60"
                   data-testid="button-calculate-wot-feature"
                 >
                   <BrainstormIcon className="w-3.5 h-3.5 shrink-0" />
@@ -2153,15 +2153,15 @@ export default function MyOutpost() {
                 </button>
                 {connectionScoresData.scores && connectionScoresData.scores.size > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-foreground/50 font-medium shrink-0">Also on</span>
+                    <span className="text-xs text-foreground font-medium shrink-0">Also on</span>
                     <div className="flex items-center gap-2">
                       <a href="https://amethyst.social/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity" title="Amethyst">
                         <img src={amethystLogo} alt="Amethyst" className="w-3.5 h-3.5 rounded-sm" />
-                        <span className="text-[10px] text-foreground/50 font-medium">Amethyst</span>
+                        <span className="text-xs text-foreground font-medium">Amethyst</span>
                       </a>
                       <a href="https://www.nostria.app/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity" title="Nostria">
                         <img src={nostriaLogo} alt="Nostria" className="w-3.5 h-3.5 rounded-sm" />
-                        <span className="text-[10px] text-foreground/50 font-medium">Nostria</span>
+                        <span className="text-xs text-foreground font-medium">Nostria</span>
                       </a>
                     </div>
                   </div>
@@ -2185,7 +2185,7 @@ export default function MyOutpost() {
               </Avatar>
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">{displayName}</p>
-                <p className="text-[11px] text-brand/50 dark:text-brand/60 mt-0.5">Scan to send sats</p>
+                <p className="text-xs text-brand mt-0.5">Scan to send sats</p>
               </div>
               {profileContent?.lud16 && (
                 <>
@@ -2199,7 +2199,7 @@ export default function MyOutpost() {
                   <div className="flex items-center gap-2 w-full max-w-[240px]">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0 rounded-md bg-accent dark:bg-white/5 border border-primary/20 px-2.5 py-1.5">
                       <Zap className="w-3 h-3 text-amber-500/70 shrink-0" />
-                      <span className="text-xs font-mono text-brand/80 truncate">
+                      <span className="text-xs font-mono text-brand truncate">
                         {profileContent.lud16}
                       </span>
                     </div>
@@ -2279,11 +2279,11 @@ function ProfilePreviewCard({
           </p>
         )}
         {about && (
-          <p className="mt-2 text-xs text-foreground/80 dark:text-foreground/70 whitespace-pre-wrap leading-relaxed line-clamp-4" data-testid="preview-about">
+          <p className="mt-2 text-xs text-foreground whitespace-pre-wrap leading-relaxed line-clamp-4" data-testid="preview-about">
             {about}
           </p>
         )}
-        <div className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
           {cleanWebsite && (
             <span className="inline-flex items-center gap-1.5 min-w-0" data-testid="preview-website">
               <Globe className="w-3 h-3 shrink-0 text-brand/60" />
@@ -2454,9 +2454,9 @@ function EditProfileForm({
               <img src={editBanner} alt="Banner preview" className="w-full h-full object-cover" data-testid="img-banner-preview" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex items-center gap-1.5 text-brand/40 group-hover/banner:text-brand-strong/70 transition-colors">
+                <div className="flex items-center gap-1.5 text-brand group-hover/banner:text-brand-strong/70 transition-colors">
                   <ImageIcon className="w-4 h-4" />
-                  <span className="text-[11px] font-medium">Add banner</span>
+                  <span className="text-xs font-medium">Add banner</span>
                 </div>
               </div>
             )}
@@ -2470,7 +2470,7 @@ function EditProfileForm({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute top-1.5 right-1.5 h-7 w-7 bg-black/40 hover:bg-black/60 text-white/70 hover:text-white rounded-full opacity-0 group-hover/banner:opacity-100 transition-opacity z-10"
+                className="absolute top-1.5 right-1.5 h-7 w-7 bg-black/40 hover:bg-black/60 text-white hover:text-white rounded-full opacity-0 group-hover/banner:opacity-100 transition-opacity z-10"
                 onClick={(e) => { e.stopPropagation(); setEditBanner(""); }}
                 data-testid="button-remove-banner"
               >
@@ -2480,7 +2480,7 @@ function EditProfileForm({
           </div>
           {bannerUploading && bannerUploadStatus && (
             <div className="absolute top-1.5 left-1.5 z-10">
-              <span className="text-[10px] text-white/80 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
+              <span className="text-xs text-white bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
                 <ShieldCheck className="w-2.5 h-2.5" />
                 {bannerUploadStatus}
               </span>
@@ -2519,13 +2519,13 @@ function EditProfileForm({
               </div>
               <div className="flex-1 min-w-0 pb-1">
                 {avatarUploading && avatarUploadStatus && (
-                  <span className="text-[10px] text-brand/60 flex items-center gap-1">
+                  <span className="text-xs text-brand flex items-center gap-1">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     {avatarUploadStatus}
                   </span>
                 )}
                 {!avatarUploading && (
-                  <p className="text-[10px] text-muted-foreground/40">Tap avatar or banner to change</p>
+                  <p className="text-xs text-muted-foreground">Tap avatar or banner to change</p>
                 )}
               </div>
             </div>
@@ -2533,32 +2533,32 @@ function EditProfileForm({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Username</label>
+            <label className="text-xs text-brand mb-1 block">Username</label>
             <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="name" className="bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} enterKeyHint="next" autoCorrect="off" data-testid="input-edit-name" />
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Display Name</label>
+            <label className="text-xs text-brand mb-1 block">Display Name</label>
             <Input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} placeholder="Display Name" className="bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} enterKeyHint="next" autoCorrect="off" data-testid="input-edit-display-name" />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-brand/60 mb-1 block">Bio</label>
+            <label className="text-xs text-brand mb-1 block">Bio</label>
             <Textarea value={editAbout} onChange={e => setEditAbout(e.target.value)} placeholder="Tell the network about yourself..." rows={3} className="resize-none bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} autoComplete="off" data-testid="input-edit-about" />
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">NIP-05 Verification</label>
+            <label className="text-xs text-brand mb-1 block">NIP-05 Verification</label>
             <Input value={editNip05} onChange={e => setEditNip05(e.target.value)} placeholder="you@domain.com" className="bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} inputMode="email" enterKeyHint="next" autoCapitalize="off" autoCorrect="off" data-testid="input-edit-nip05" />
             {nip05HasValue && (
               <div className="mt-1 min-h-[1rem]" data-testid="status-nip05-verify">
                 {nip05Status === "verified" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success dark:text-green-400">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-success dark:text-green-400">
                     <BadgeCheck className="w-3.5 h-3.5" /> Verified
                   </span>
                 ) : nip05Status === "loading" || nip05Status === "unknown" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <RelayOutpostInlineLoader className="w-3 h-3" /> Checking…
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     Not verified yet
                   </span>
                 )}
@@ -2566,11 +2566,11 @@ function EditProfileForm({
             )}
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Website</label>
+            <label className="text-xs text-brand mb-1 block">Website</label>
             <Input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://..." className="bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} inputMode="url" enterKeyHint="next" autoCapitalize="off" autoCorrect="off" autoComplete="off" data-testid="input-edit-website" />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-brand/60 mb-1 block">Lightning Address</label>
+            <label className="text-xs text-brand mb-1 block">Lightning Address</label>
             <div className="flex items-center gap-2">
               <Input value={editLud16} onChange={e => setEditLud16(e.target.value)} placeholder="you@walletofsatoshi.com" className="flex-1 bg-white/50 dark:bg-white/5 border-brand/25 dark:border-brand/20 focus-visible:border-brand/40" style={{ fontSize: 16 }} inputMode="email" enterKeyHint="done" autoCapitalize="off" autoCorrect="off" data-testid="input-edit-lud16" />
               <Button
@@ -2589,21 +2589,21 @@ function EditProfileForm({
             {lnTest !== "idle" && (
               <div className="mt-1 min-h-[1rem]" data-testid="status-lud16-test">
                 {lnTest === "ok" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success dark:text-green-400">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-success dark:text-green-400">
                     <Check className="w-3.5 h-3.5" /> Reachable
                   </span>
                 ) : lnTest === "fail" ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     Couldn't reach
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <RelayOutpostInlineLoader className="w-3 h-3" /> Checking…
                   </span>
                 )}
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground/40 mt-1">Test only checks that your address resolves — it never sends or requests any sats.</p>
+            <p className="text-xs text-muted-foreground mt-1">Test only checks that your address resolves — it never sends or requests any sats.</p>
           </div>
         </div>
 
@@ -2611,14 +2611,14 @@ function EditProfileForm({
           <div className="pt-3 border-t border-brand/15 dark:border-brand/10">
             <div className="flex items-center gap-1.5 mb-1">
               <RelayOutpostIcon className="w-3.5 h-3.5 text-brand/60" />
-              <span className="text-[13px] font-medium text-foreground/80">Your communities</span>
-              <span className="text-[10px] text-muted-foreground/40 ml-auto">
+              <span className="text-[13px] font-medium text-foreground">Your communities</span>
+              <span className="text-xs text-muted-foreground ml-auto">
                 {hiddenUrls.size > 0
                   ? `${badgeList.filter(b => !hiddenUrls.has(b.url)).length} of ${badgeList.length} shown`
                   : `${badgeList.length} joined`}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground/40 dark:text-muted-foreground/30 mb-2 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
               Relay communities you belong to. Reorder with arrows, rename, or use the eye icon to control which ones appear on your public profile.
             </p>
             <div className="space-y-2">
@@ -2643,7 +2643,7 @@ function EditProfileForm({
                           }}
                           disabled={isFirst}
                           aria-label={`Move ${b.name} up`}
-                          className={`p-0.5 rounded transition-colors ${isFirst ? "text-muted-foreground/15 cursor-default" : "text-muted-foreground/40 hover:text-foreground/70"}`}
+                          className={`p-0.5 rounded transition-colors ${isFirst ? "text-muted-foreground cursor-default" : "text-muted-foreground hover:text-foreground/70"}`}
                           title="Move up"
                         >
                           <ChevronUp className="w-3 h-3" />
@@ -2658,7 +2658,7 @@ function EditProfileForm({
                           }}
                           disabled={isLast}
                           aria-label={`Move ${b.name} down`}
-                          className={`p-0.5 rounded transition-colors ${isLast ? "text-muted-foreground/15 cursor-default" : "text-muted-foreground/40 hover:text-foreground/70"}`}
+                          className={`p-0.5 rounded transition-colors ${isLast ? "text-muted-foreground cursor-default" : "text-muted-foreground hover:text-foreground/70"}`}
                           title="Move down"
                         >
                           <ChevronDown className="w-3 h-3" />
@@ -2667,7 +2667,7 @@ function EditProfileForm({
                     )}
                     <AccessIcon className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground/50 truncate mb-0.5">{b.name}</p>
+                      <p className="text-xs text-muted-foreground truncate mb-0.5">{b.name}</p>
                       <Input
                         value={currentCustom}
                         onChange={(e) => {
@@ -2683,7 +2683,7 @@ function EditProfileForm({
                     </div>
                     <button
                       onClick={() => toggleHidden(b.url)}
-                      className={`p-1 rounded transition-colors shrink-0 ${ isFeatured ? "text-brand/60 hover:text-brand" : "text-muted-foreground/30 hover:text-muted-foreground/60" }`}
+                      className={`p-1 rounded transition-colors shrink-0 ${ isFeatured ? "text-brand" : "text-muted-foreground hover:text-muted-foreground/60" }`}
                       title={isFeatured ? "Hide from profile" : "Show on profile"}
                     >
                       {isFeatured ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -2702,7 +2702,7 @@ function EditProfileForm({
           signer={signer}
         />
 
-        <p className="text-[11px] text-brand/40">
+        <p className="text-xs text-brand">
           Changes are signed by your key and sent to relays. Your key never leaves your signer.
         </p>
       </div>
@@ -2992,12 +2992,12 @@ function UpcomingStreamsSection({
     <div className="pt-3 border-t border-brand/15 dark:border-brand/10">
       <div className="flex items-center gap-1.5 mb-1">
         <Calendar className="w-3.5 h-3.5 text-brand/60" />
-        <span className="text-[13px] font-medium text-foreground/80">Upcoming streams</span>
-        <span className="text-[10px] text-muted-foreground/40 ml-auto">
+        <span className="text-[13px] font-medium text-foreground">Upcoming streams</span>
+        <span className="text-xs text-muted-foreground ml-auto">
           {plannedStreams.length > 0 ? `${plannedStreams.length} scheduled` : "none scheduled"}
         </span>
       </div>
-      <p className="text-[10px] text-muted-foreground/40 dark:text-muted-foreground/30 mb-2 leading-relaxed">
+      <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
         Schedule upcoming streams so your audience knows when you'll be live.
       </p>
 
@@ -3015,11 +3015,11 @@ function UpcomingStreamsSection({
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground/80 truncate">{stream.title}</p>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+                  <p className="text-xs font-medium text-foreground truncate">{stream.title}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="w-2.5 h-2.5" />
                     <span>{format(scheduledDate, "MMM d, yyyy 'at' h:mm a")}</span>
-                    {isPast && <span className="text-amber-500/70 ml-1">(past due)</span>}
+                    {isPast && <span className="text-warning ml-1">(past due)</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -3034,7 +3034,7 @@ function UpcomingStreamsSection({
                   <button
                     type="button"
                     onClick={() => startEdit(stream)}
-                    className="p-1 rounded text-brand/60 hover:text-brand transition-colors"
+                    className="p-1 rounded text-brand transition-colors"
                     title="Edit"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -3058,15 +3058,15 @@ function UpcomingStreamsSection({
       {showForm ? (
         <div className="space-y-2 p-2 rounded-md border border-brand/20 dark:border-brand/10 bg-brand/5">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] font-medium text-brand/70">
+            <span className="text-xs font-medium text-brand">
               {goLiveStream ? "Go Live" : editingStream ? "Edit Stream" : "Schedule a Stream"}
             </span>
-            <button type="button" onClick={resetForm} className="p-0.5 text-muted-foreground/40 hover:text-foreground/60">
+            <button type="button" onClick={resetForm} className="p-0.5 text-muted-foreground">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Title *</label>
+            <label className="text-xs text-brand mb-1 block">Title *</label>
             <Input
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -3077,7 +3077,7 @@ function UpcomingStreamsSection({
             />
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Description</label>
+            <label className="text-xs text-brand mb-1 block">Description</label>
             <Textarea
               value={summary}
               onChange={e => setSummary(e.target.value)}
@@ -3088,7 +3088,7 @@ function UpcomingStreamsSection({
             />
           </div>
           <div>
-            <label className="text-xs text-brand/60 mb-1 block">Image</label>
+            <label className="text-xs text-brand mb-1 block">Image</label>
             <div className="flex items-center gap-2">
               {imageUrl && (
                 <div className="w-10 h-10 rounded overflow-hidden border border-primary/20 shrink-0 bg-muted">
@@ -3120,7 +3120,7 @@ function UpcomingStreamsSection({
                   </Button>
                 </div>
                 {imageUploading && imageUploadStatus && (
-                  <span className="text-[10px] text-brand/60 flex items-center gap-1 mt-1">
+                  <span className="text-xs text-brand flex items-center gap-1 mt-1">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     {imageUploadStatus}
                   </span>
@@ -3132,7 +3132,7 @@ function UpcomingStreamsSection({
           <div className="flex items-center justify-between py-1">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-3.5 h-3.5 text-brand/50" />
-              <label className="text-xs text-brand/60">Enable live chat</label>
+              <label className="text-xs text-brand">Enable live chat</label>
             </div>
             <button
               type="button"
@@ -3152,7 +3152,7 @@ function UpcomingStreamsSection({
 
           {goLiveStream ? (
             <div>
-              <label className="text-xs text-brand/60 mb-1 block">Streaming URL *</label>
+              <label className="text-xs text-brand mb-1 block">Streaming URL *</label>
               <Input
                 value={streamingUrl}
                 onChange={e => setStreamingUrl(e.target.value)}
@@ -3168,7 +3168,7 @@ function UpcomingStreamsSection({
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-brand/60 mb-1 block">Date *</label>
+                  <label className="text-xs text-brand mb-1 block">Date *</label>
                   <Input
                     type="date"
                     value={scheduledDate}
@@ -3179,7 +3179,7 @@ function UpcomingStreamsSection({
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-brand/60 mb-1 block">Time *</label>
+                  <label className="text-xs text-brand mb-1 block">Time *</label>
                   <Input
                     type="time"
                     value={scheduledTime}
@@ -3194,7 +3194,7 @@ function UpcomingStreamsSection({
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center gap-2">
                     <Repeat2 className="w-3.5 h-3.5 text-brand/50" />
-                    <label className="text-xs text-brand/60">Repeat</label>
+                    <label className="text-xs text-brand">Repeat</label>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {([
@@ -3215,7 +3215,7 @@ function UpcomingStreamsSection({
                             setCustomDays([dayIdx]);
                           }
                         }}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border ${ recurrence === val ? "border-brand/20 bg-accent text-accent-foreground dark:text-brand" : "border-brand/15 dark:border-brand/10 text-muted-foreground/50 hover:text-muted-foreground/70 hover:border-brand/25" }`}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${ recurrence === val ? "border-brand/20 bg-accent text-accent-foreground dark:text-brand" : "border-brand/15 dark:border-brand/10 text-muted-foreground hover:text-muted-foreground/70 hover:border-brand/25" }`}
                       >
                         {label}
                       </button>
@@ -3235,7 +3235,7 @@ function UpcomingStreamsSection({
                                 : [...prev, idx].sort()
                             );
                           }}
-                          className={`w-9 h-7 rounded text-[10px] font-semibold transition-colors border ${ customDays.includes(idx) ? "border-brand/20 bg-accent text-accent-foreground dark:text-brand" : "border-brand/10 text-muted-foreground/40 hover:text-muted-foreground/60 hover:border-brand/20" }`}
+                          className={`w-9 h-7 rounded text-xs font-semibold transition-colors border ${ customDays.includes(idx) ? "border-brand/20 bg-accent text-accent-foreground dark:text-brand" : "border-brand/10 text-muted-foreground hover:text-muted-foreground/60 hover:border-brand/20" }`}
                         >
                           {day}
                         </button>
@@ -3245,18 +3245,18 @@ function UpcomingStreamsSection({
 
                   {recurrence !== "none" && (
                     <div className="flex items-center gap-2">
-                      <label className="text-[11px] text-muted-foreground/50 shrink-0">Create</label>
+                      <label className="text-xs text-muted-foreground shrink-0">Create</label>
                       <select
                         value={recurrenceCount}
                         onChange={e => setRecurrenceCount(Number(e.target.value))}
-                        className="text-xs rounded-md border border-brand/20 dark:border-brand/15 bg-white/50 dark:bg-white/5 text-foreground/80 px-2 py-1"
+                        className="text-xs rounded-md border border-brand/20 dark:border-brand/15 bg-white/50 dark:bg-white/5 text-foreground px-2 py-1"
                         style={{ fontSize: 16 }}
                       >
                         {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 26, 52].map(n => (
                           <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
-                      <span className="text-[11px] text-muted-foreground/50">
+                      <span className="text-xs text-muted-foreground">
                         {recurrence === "custom"
                           ? "occurrences"
                           : recurrence === "daily" ? "days" : recurrence === "weekly" ? "weeks" : recurrence === "biweekly" ? "sessions (every 2 weeks)" : "months"}
@@ -3265,7 +3265,7 @@ function UpcomingStreamsSection({
                   )}
 
                   {recurrence !== "none" && scheduledDate && scheduledTime && (
-                    <div className="text-[10px] text-brand/60 dark:text-brand/40 bg-brand/5 rounded-md px-2 py-1.5 leading-relaxed">
+                    <div className="text-xs text-brand bg-brand/5 rounded-md px-2 py-1.5 leading-relaxed">
                       {(() => {
                         const base = new Date(`${scheduledDate}T${scheduledTime}`);
                         if (isNaN(base.getTime())) return null;
@@ -3309,7 +3309,7 @@ function UpcomingStreamsSection({
           variant="outline"
           size="sm"
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="w-full border-brand/20 dark:border-brand/15 hover:border-brand/40 text-brand/70 dark:text-brand/60"
+          className="w-full border-brand/20 dark:border-brand/15 hover:border-brand/40 text-brand"
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
           Schedule a Stream
@@ -3331,9 +3331,9 @@ function NotesTab({ notes, loaded, repostMap, onLoadMore, hasMore, loadingMore }
   if (loaded && notes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-notes">
-        <OttoEmpty mood="quiet" size={88} className="mb-2 text-foreground/70" />
-        <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No posts yet</p>
-        <p className="text-xs text-foreground/40 dark:text-foreground/30 mt-1">Write your first post and it shows here</p>
+        <OttoEmpty mood="quiet" size={88} className="mb-2 text-foreground" />
+        <p className="text-sm text-foreground font-medium">No posts yet</p>
+        <p className="text-xs text-foreground mt-1">Write your first post and it shows here</p>
       </div>
     );
   }
@@ -3362,9 +3362,9 @@ function RepliesTab({ replies, loaded, onLoadMore, hasMore, loadingMore }: { rep
   if (loaded && replies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-replies">
-        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
-        <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No replies yet</p>
-        <p className="text-xs text-foreground/40 dark:text-foreground/30 mt-1">Join conversations to see your replies here</p>
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground" />
+        <p className="text-sm text-foreground font-medium">No replies yet</p>
+        <p className="text-xs text-foreground mt-1">Join conversations to see your replies here</p>
       </div>
     );
   }
@@ -3393,8 +3393,8 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore, onDel
   if (articles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground/70" />
-        <p className="text-sm text-foreground/60 dark:text-foreground/50 font-medium">No articles published yet</p>
+        <OttoEmpty mood="quiet" size={72} className="mb-2 text-foreground" />
+        <p className="text-sm text-foreground font-medium">No articles published yet</p>
         <Button variant="outline" size="sm" className="mt-3 gap-1.5 font-medium" asChild>
           <Link href="/articles/write">
             <Pencil className="w-3.5 h-3.5" />
@@ -3445,11 +3445,11 @@ function ArticlesTab({ articles, loaded, onLoadMore, hasMore, loadingMore, onDel
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{summary}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="text-[11px] text-muted-foreground/80">
+                      <span className="text-xs text-muted-foreground">
                         {date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                       {hashtags.slice(0, 3).map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-[11px]">
+                        <Badge key={tag} variant="secondary" className="text-xs">
                           #{tag}
                         </Badge>
                       ))}
@@ -3585,7 +3585,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
   if (profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <UsersRound className="w-8 h-8 text-muted-foreground/50 mb-2" />
+        <UsersRound className="w-8 h-8 text-muted-foreground mb-2" />
         <p className="text-sm text-muted-foreground">{emptyText}</p>
       </div>
     );
@@ -3670,7 +3670,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                   <button
                     type="button"
                     onClick={() => setShowSortMenu(false)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground/60 active:bg-muted/40 transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted/40 transition-colors"
                     aria-label="Close"
                   >
                     <X className="w-4 h-4" />
@@ -3711,7 +3711,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                   <button
                     type="button"
                     onClick={() => setShowSortMenu(false)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground/60 active:bg-muted/40 transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted/40 transition-colors"
                     aria-label="Close"
                   >
                     <X className="w-4 h-4" />
@@ -3796,7 +3796,7 @@ function PeopleTab({ profiles, loaded, emptyText, onLoadMore, hasMore, loadingMo
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                     </span>
                     <span className="text-[12px] font-semibold text-danger dark:text-red-400">Live now</span>
-                    <span className="text-[10px] text-danger dark:text-red-400/50 font-medium">{liveCount} broadcasting</span>
+                    <span className="text-xs text-danger dark:text-red-400/50 font-medium">{liveCount} broadcasting</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {processedProfiles.slice(0, liveCount).map(renderCard)}
@@ -3841,14 +3841,14 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-2">
           <Satellite className="w-3.5 h-3.5 text-green-600 dark:text-green-500/80" />
-          <span className="text-[13px] text-foreground/80 font-medium">Connected app relays</span>
-          <Badge variant="secondary" className="text-[10px] ml-auto">{DEFAULT_RELAYS.length} active</Badge>
+          <span className="text-[13px] text-foreground font-medium">Connected app relays</span>
+          <Badge variant="secondary" className="text-xs ml-auto">{DEFAULT_RELAYS.length} active</Badge>
         </div>
         <div className="space-y-1">
           {DEFAULT_RELAYS.map(url => (
             <div key={url} className="flex items-center gap-2 px-3 py-2 rounded-md glass-card border text-sm" data-testid={`relay-app-${url}`}>
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-500/80 shrink-0 animate-pulse" />
-              <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{url.replace("wss://", "")}</span>
+              <span className="font-mono text-xs truncate text-foreground dark:text-foreground">{url.replace("wss://", "")}</span>
             </div>
           ))}
         </div>
@@ -3857,62 +3857,62 @@ function RelaysTab({ relayList, writeRelays, readRelays, loaded }: {
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Satellite className="w-3.5 h-3.5 text-brand" />
-          <span className="text-[13px] text-foreground/80 font-medium">Inbox</span>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">NIP-65 read</Badge>
-          <Badge variant="secondary" className="text-[10px] ml-auto">{readRelays.length}</Badge>
+          <span className="text-[13px] text-foreground font-medium">Inbox</span>
+          <Badge variant="outline" className="text-xs px-1 py-0 h-4 border-border/40">NIP-65 read</Badge>
+          <Badge variant="secondary" className="text-xs ml-auto">{readRelays.length}</Badge>
         </div>
-        <p className="text-[11px] text-foreground/55 dark:text-muted-foreground/70 mb-2">Relays where people can reach you with mentions, replies, and DMs.</p>
+        <p className="text-xs text-foreground mb-2">Relays where people can reach you with mentions, replies, and DMs.</p>
         {readRelays.length > 0 ? (
           <div className="space-y-1">
             {readRelays.map(r => (
               <div key={`in-${r.url}`} className="flex items-center gap-2 px-3 py-2 rounded-md glass-card border text-sm" data-testid={`relay-read-${r.url}`}>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-500/80 shrink-0" />
-                <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{r.url.replace("wss://", "")}</span>
+                <span className="font-mono text-xs truncate text-foreground dark:text-foreground">{r.url.replace("wss://", "")}</span>
                 {r.mode === "both" && (
-                  <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">read + write</Badge>
+                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">read + write</Badge>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-[11px] text-muted-foreground/60">No inbox relays declared yet.</div>
+          <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-xs text-muted-foreground">No inbox relays declared yet.</div>
         )}
       </div>
 
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Signal className="w-3.5 h-3.5 text-brand" />
-          <span className="text-[13px] text-foreground/80 font-medium">Outbox</span>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">NIP-65 write</Badge>
-          <Badge variant="secondary" className="text-[10px] ml-auto">{writeRelays.length}</Badge>
+          <span className="text-[13px] text-foreground font-medium">Outbox</span>
+          <Badge variant="outline" className="text-xs px-1 py-0 h-4 border-border/40">NIP-65 write</Badge>
+          <Badge variant="secondary" className="text-xs ml-auto">{writeRelays.length}</Badge>
         </div>
-        <p className="text-[11px] text-foreground/55 dark:text-muted-foreground/70 mb-2">Relays your posts go out from — other clients fetch your posts here.</p>
+        <p className="text-xs text-foreground mb-2">Relays your posts go out from — other clients fetch your posts here.</p>
         {writeRelays.length > 0 ? (
           <div className="space-y-1">
             {writeRelays.map(r => (
               <div key={`out-${r.url}`} className="flex items-center gap-2 px-3 py-2 rounded-md glass-card border text-sm" data-testid={`relay-write-${r.url}`}>
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-500/80 shrink-0" />
-                <span className="font-mono text-xs truncate text-foreground/80 dark:text-foreground">{r.url.replace("wss://", "")}</span>
+                <span className="font-mono text-xs truncate text-foreground dark:text-foreground">{r.url.replace("wss://", "")}</span>
                 {r.mode === "both" && (
-                  <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">read + write</Badge>
+                  <Badge variant="secondary" className="text-xs ml-auto shrink-0">read + write</Badge>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-[11px] text-muted-foreground/60">No outbox relays declared yet.</div>
+          <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-xs text-muted-foreground">No outbox relays declared yet.</div>
         )}
       </div>
 
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Bookmark className="w-3.5 h-3.5 text-amber-500/80" />
-          <span className="text-[13px] text-foreground/80 font-medium">Favorites</span>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-border/40">kind 10065</Badge>
-          <Badge variant="outline" className="text-[9px] ml-auto border-amber-500/30 text-amber-600/80 dark:text-amber-400/70">Coming soon</Badge>
+          <span className="text-[13px] text-foreground font-medium">Favorites</span>
+          <Badge variant="outline" className="text-xs px-1 py-0 h-4 border-border/40">kind 10065</Badge>
+          <Badge variant="outline" className="text-xs ml-auto border-amber-500/30 text-warning">Coming soon</Badge>
         </div>
-        <p className="text-[11px] text-foreground/55 dark:text-muted-foreground/70 mb-2">Your starred relays — clients can use this list to suggest where to reach you.</p>
-        <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-[11px] text-muted-foreground/60">
+        <p className="text-xs text-foreground mb-2">Your starred relays — clients can use this list to suggest where to reach you.</p>
+        <div className="px-3 py-2 rounded-md border border-dashed border-border/40 dark:border-border/15 text-xs text-muted-foreground">
           Favorites publishing isn't wired up yet. For now, manage your set in <Link href="/relays" className="underline hover:text-foreground/80">Relays</Link>.
         </div>
       </div>
@@ -4570,8 +4570,8 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
         data-testid="container-flight-log-stats"
       >
         <div className="flex items-center gap-2 mb-3">
-          <ScrollText className="w-4 h-4 text-brand dark:text-brand/70" />
-          <span className="text-[13px] text-foreground/80 font-medium">This week</span>
+          <ScrollText className="w-4 h-4 text-brand" />
+          <span className="text-[13px] text-foreground font-medium">This week</span>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
           {[
@@ -4595,7 +4595,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
               <span className={`text-base sm:text-lg font-semibold tabular-nums ${stat.color}`}>
                 {typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}
               </span>
-              <span className="text-[11px] text-foreground/45 dark:text-muted-foreground/50">{stat.label}</span>
+              <span className="text-xs text-foreground">{stat.label}</span>
             </button>
           ))}
         </div>
@@ -4606,7 +4606,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
           <button
             key={f.value}
             onClick={() => setActiveFilter(f.value)}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${ activeFilter === f.value ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20 dark:border-brand/30" : "bg-muted/30 text-foreground/50 dark:text-muted-foreground/60 border border-border/50 dark:border-border/40 hover:text-foreground/70 dark:hover:text-muted-foreground" }`}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${ activeFilter === f.value ? "bg-accent text-accent-foreground dark:text-brand border border-brand/20 dark:border-brand/30" : "bg-muted/30 text-muted-foreground border border-border/50 dark:border-border/40 hover:text-foreground" }`}
             data-testid={`filter-${f.value}`}
           >
             {f.label}
@@ -4616,9 +4616,9 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
 
       {grouped.length === 0 && loaded && (
         <div className="flex flex-col items-center justify-center py-12 text-center" data-testid="container-no-activities">
-          <ScrollText className="w-8 h-8 text-muted-foreground/50 mb-2" />
+          <ScrollText className="w-8 h-8 text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">No activity recorded</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Your flight log will populate as you interact on the network</p>
+          <p className="text-xs text-muted-foreground mt-1">Your flight log will populate as you interact on the network</p>
         </div>
       )}
 
@@ -4635,9 +4635,9 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                 ? <ChevronDown className="w-3.5 h-3.5 text-foreground/40 dark:text-muted-foreground/50 shrink-0" />
                 : <ChevronRight className="w-3.5 h-3.5 text-foreground/40 dark:text-muted-foreground/50 shrink-0" />
               }
-              <span className="text-[13px] font-medium text-foreground/70">{group.label}</span>
+              <span className="text-[13px] font-medium text-foreground">{group.label}</span>
               <div className="flex-1 h-px bg-border/50 dark:bg-border/30" />
-              <span className="text-[11px] tabular-nums text-foreground/45 dark:text-muted-foreground/50 bg-muted/40 dark:bg-muted/20 px-1.5 py-0.5 rounded-full">{group.entries.length}</span>
+              <span className="text-xs tabular-nums text-foreground bg-muted/40 dark:bg-muted/20 px-1.5 py-0.5 rounded-full">{group.entries.length}</span>
             </button>
             {isExpanded && (
               <div className="space-y-1 ml-1">
@@ -4662,7 +4662,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`text-xs font-medium ${config.colorClass}`}>{config.label}</span>
                           {entry.type === "zap" && entry.zapAmount ? (
-                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                            <span className="text-xs font-semibold text-warning tabular-nums">
                               {entry.zapAmount.toLocaleString()} sats
                             </span>
                           ) : null}
@@ -4673,14 +4673,14 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
                             <span className="text-[13px] text-danger dark:text-red-400/60 font-medium capitalize">{entry.reportReason}</span>
                           )}
                           {targetProfile && (
-                            <span className="text-xs text-foreground/45 dark:text-muted-foreground/50 truncate">
+                            <span className="text-xs text-foreground truncate">
                               → {targetProfile.name}
                             </span>
                           )}
-                          <span className="text-[11px] text-foreground/45 dark:text-muted-foreground/50 ml-auto shrink-0 tabular-nums">{timeStr}</span>
+                          <span className="text-xs text-foreground ml-auto shrink-0 tabular-nums">{timeStr}</span>
                         </div>
                         {(entry.type === "post" || entry.type === "reply") && entry.event.content && (
-                          <p className="text-xs text-foreground/50 dark:text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-foreground mt-0.5 line-clamp-2 leading-relaxed">
                             {entry.event.content.slice(0, 200)}
                           </p>
                         )}
@@ -4697,7 +4697,7 @@ function FlightLogTab({ pubkey }: { pubkey: string }) {
       {!loaded && activities.length > 0 && (
         <div className="flex items-center justify-center gap-2 py-4">
           <RelayOutpostInlineLoader />
-          <span className="text-xs text-muted-foreground/50">Loading more...</span>
+          <span className="text-xs text-muted-foreground">Loading more...</span>
         </div>
       )}
     </div>

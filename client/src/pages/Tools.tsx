@@ -105,17 +105,17 @@ export default function Tools() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-accent dark:bg-brand/15 border border-border flex items-center justify-center">
-                      <t.icon className="w-4 h-4 text-brand dark:text-brand/80" />
+                      <t.icon className="w-4 h-4 text-brand" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground/90">{t.title}</p>
-                      <p className="text-xs text-muted-foreground/55">{t.desc}</p>
+                      <p className="text-sm font-semibold text-foreground">{t.title}</p>
+                      <p className="text-xs text-muted-foreground">{t.desc}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {t.href === "/recover-follows" && followHealthCount > 0 && (
                       <span
-                        className="min-w-[1.25rem] h-5 px-1.5 inline-flex items-center justify-center rounded-full text-[11px] font-semibold bg-brand/15 text-brand"
+                        className="min-w-[1.25rem] h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-semibold bg-brand/15 text-brand"
                         aria-label={`${followHealthCount} follows need review`}
                         data-testid="badge-follow-health"
                       >

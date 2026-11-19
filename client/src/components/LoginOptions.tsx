@@ -169,10 +169,10 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
             <div className="rounded-md p-4 space-y-3 bg-foreground/[0.03] border border-border/30">
               <div className="flex items-start gap-3">
                 <Smartphone className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   Tap the button below to open your signer app.
                   {isAndroid
-                    ? <> Works with <a href="https://github.com/greenart7c3/Amber/releases" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground/80" data-testid="link-amber-mobile">Amber</a> and other signer apps.</>
+                    ? <> Works with <a href="https://github.com/greenart7c3/Amber/releases" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground" data-testid="link-amber-mobile">Amber</a> and other signer apps.</>
                     : " Your signer app will handle the connection."}
                 </p>
               </div>
@@ -181,9 +181,9 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
             <div className="rounded-md p-4 space-y-3 bg-foreground/[0.03] border border-border/30">
               <div className="flex items-start gap-3">
                 <Smartphone className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <ol className="text-[11px] space-y-1.5 list-decimal list-inside text-muted-foreground">
-                  <li>Open your signer app (<a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground/80" data-testid="link-amber-qr-instructions">Amber</a> on Android, Keystache, etc.)</li>
-                  <li>Select <span className="font-medium text-foreground/80">Remote Login</span> or <span className="font-medium text-foreground/80">Scan Code</span></li>
+                <ol className="text-xs space-y-1.5 list-decimal list-inside text-muted-foreground">
+                  <li>Open your signer app (<a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-foreground" data-testid="link-amber-qr-instructions">Amber</a> on Android, Keystache, etc.)</li>
+                  <li>Select <span className="font-medium text-foreground">Remote Login</span> or <span className="font-medium text-foreground">Scan Code</span></li>
                   <li>Scan the QR code below</li>
                 </ol>
               </div>
@@ -217,15 +217,15 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Open in Signer App
                   </Button>
-                  <p className="text-[11px] text-center text-muted-foreground/80">
+                  <p className="text-xs text-center text-muted-foreground">
                     If nothing happens, copy the connection string and paste it in your signer app
                   </p>
                   {timedOut && (
                     <div className="rounded-md p-3 space-y-2 bg-destructive/10 border border-destructive/20">
-                      <p className="text-[11px] text-center font-medium text-destructive">
+                      <p className="text-xs text-center font-medium text-destructive">
                         Connection timed out
                       </p>
-                      <p className="text-[10px] text-center text-muted-foreground">
+                      <p className="text-xs text-center text-muted-foreground">
                         The signer did not respond. Try starting over.
                       </p>
                       <Button
@@ -242,7 +242,7 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
                   {recovering && (
                     <div className="flex items-center justify-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-amber-500/70" />
-                      <span className="text-[11px] font-mono text-amber-600">
+                      <span className="text-xs font-mono text-warning">
                         Reconnecting to relays...
                       </span>
                     </div>
@@ -250,7 +250,7 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
                   {waiting && !recovering && (
                     <div className="flex items-center justify-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-foreground/50" />
-                      <span className="text-[11px] font-mono text-muted-foreground">
+                      <span className="text-xs font-mono text-muted-foreground">
                         Waiting for approval {formatTime(elapsed)}
                       </span>
                     </div>
@@ -306,7 +306,7 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
                         <div className="flex items-center gap-1.5 rounded-md px-2.5 py-1 shadow-sm bg-card border border-border/50">
                           <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-foreground/50" />
-                          <span className="text-[11px] font-mono whitespace-nowrap text-muted-foreground">
+                          <span className="text-xs font-mono whitespace-nowrap text-muted-foreground">
                             Waiting {formatTime(elapsed)}
                           </span>
                         </div>
@@ -348,7 +348,7 @@ function QRLoginFlow({ onBack }: { onBack: () => void; }) {
 
           <div className="flex items-center gap-1.5 pt-2 border-t border-border/30">
             <Lock className="w-3 h-3 text-muted-foreground/80" />
-            <span className="text-[12px] font-medium text-muted-foreground/80">
+            <span className="text-[12px] font-medium text-muted-foreground">
               Your account never leaves your signer app
             </span>
           </div>
@@ -454,7 +454,7 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
   const iconBoxCls = "dark:bg-foreground/[0.05] dark:border dark:border-border/40"; // no icon tiles in light (Outpost look)
   const iconCls = "text-foreground";
   const descCls = "text-muted-foreground";
-  const linkCls = "text-foreground/70 underline underline-offset-2";
+  const linkCls = "text-foreground underline underline-offset-2";
 
   return (
     <div className="w-full">
@@ -533,7 +533,7 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
                 <opt.icon className={`w-5 h-5 shrink-0 ${iconCls}`} />
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold">{opt.title}</span>
-                  <span className={`block text-[11px] leading-snug ${descCls}`}>{opt.caption}</span>
+                  <span className={`block text-xs leading-snug ${descCls}`}>{opt.caption}</span>
                 </span>
                 <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
               </button>
@@ -765,7 +765,7 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
                 <p className={`text-[12px] font-semibold ${descCls}`}>
                   How to get a bunker:// URI
                 </p>
-                <ul className={`text-[11px] space-y-1 list-disc list-inside ${descCls}`}>
+                <ul className={`text-xs space-y-1 list-disc list-inside ${descCls}`}>
                   <li><a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener noreferrer" className={linkCls} data-testid="link-amber-bunker-instructions">Amber</a> (Android): Settings &rarr; Share bunker connection</li>
                   <li>nsecBunker: Create a connection and copy the URI</li>
                   <li>Any compatible signer app</li>
@@ -805,8 +805,8 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
         return (
           <div className="flex items-center justify-center gap-2 pt-2">
             <div className="h-px w-6 sm:w-10 bg-border" />
-            <Icon className="w-3 h-3 shrink-0 text-brand/70" />
-            <span className="text-[12px] sm:text-xs sm:tracking-[0.3em] text-center font-medium text-muted-foreground/70">
+            <Icon className="w-3 h-3 shrink-0 text-brand" />
+            <span className="text-[12px] sm:text-xs sm:tracking-[0.3em] text-center font-medium text-muted-foreground">
               {text}
             </span>
             <div className="h-px w-6 sm:w-10 bg-border" />

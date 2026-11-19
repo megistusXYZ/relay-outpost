@@ -78,7 +78,7 @@ export function PasskeyEnrollmentCard({
 
   const cardCls = "bg-muted/30 border border-border/60";
   const titleCls = "text-foreground";
-  const bodyCls = "text-foreground/75";
+  const bodyCls = "text-foreground";
   const subtleCls = "text-muted-foreground";
   const btnCls = "bg-foreground text-background hover:bg-foreground/90";
 
@@ -106,7 +106,7 @@ export function PasskeyEnrollmentCard({
     return (
       <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-unsupported">
         <div className="flex items-start gap-3">
-          <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/5 border border-border/40 text-foreground/60">
+          <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/5 border border-border/40 text-foreground">
             <Fingerprint className="w-4.5 h-4.5" />
           </span>
           <div className="space-y-1 min-w-0 flex-1">
@@ -123,7 +123,7 @@ export function PasskeyEnrollmentCard({
   return (
     <div className={`rounded-xl p-3.5 ${cardCls}`} data-testid="panel-passkey-offer">
       <div className="flex items-start gap-3">
-        <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/[0.06] border border-border/60 text-foreground/85">
+        <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg bg-foreground/[0.06] border border-border/60 text-foreground">
           <Fingerprint className="w-4.5 h-4.5" />
         </span>
         <div className="space-y-2.5 min-w-0 flex-1">
@@ -132,7 +132,7 @@ export function PasskeyEnrollmentCard({
               <p className={`text-[13px] font-semibold ${titleCls}`}>
                 Make sign-in instant
               </p>
-              <span className="text-[10px] font-brand uppercase tracking-[0.14em] font-bold px-1.5 py-0.5 rounded bg-foreground/10 text-foreground/70">
+              <span className="text-xs font-brand uppercase tracking-[0.14em] font-bold px-1.5 py-0.5 rounded bg-foreground/10 text-foreground">
                 Recommended
               </span>
             </div>
