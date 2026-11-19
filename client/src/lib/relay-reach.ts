@@ -24,7 +24,7 @@
  * real relays, not assumed.
  */
 import type { Event as NostrEvent, Filter } from "nostr-tools";
-import { pool } from "./nostr";
+import { pool, DEFAULT_READ_MAX_WAIT_MS } from "./nostr";
 import { getAuthStatus } from "./nip42-auth";
 
 /** A result that knows whether it is an answer or an absence of one. */
@@ -137,6 +137,12 @@ export async function canReachAny(relayUrls: string[]): Promise<boolean> {
 }
 
 /**
+ * How far past our own timer the library's made-up end of stream is pushed.
+ * It only has to lose the race; the margin covers timer jitter.
+ */
+const MADE_UP_EOSE_MARGIN_MS = 5_000;
+
+/**
  * A one-shot read that reports whether the relays ANSWERED, not just what came back.
  *
  * The reason this exists as a primitive: three separate code paths were found
@@ -148,30 +154,40 @@ export async function canReachAny(relayUrls: string[]): Promise<boolean> {
  * kind-10073); it kept happening because "did anyone answer?" was not a thing a
  * caller could ask.
  *
- * `answered` is true only when the stream ended AND one of these relays is one
- * we are connected to. The end of the stream alone proves nothing: the pool
- * fires `oneose` for a relay that never connected, and for one whose dial was
- * skipped because it refused moments ago. This function trusted it anyway, so
- * a set with every relay down "ended" in a millisecond with zero events and
- * read as a confirmed absence. Measured in a browser (2026-11-18): a refused
- * connection, and one dropped before the handshake, both came back answered
- * while `canReachRelay` said false for the same relay.
+ * `answered` is true when at least one of these relays sent its OWN end of
+ * stream. Nothing else counts, because a stream ends in four other ways and
+ * each of them has been read as an answer here:
  *
- * So the end of the stream is put to `canReachAny`. It resolves at once for an
- * open socket, and a relay that just refused is not dialed a second time (the
- * pool remembers it), so the check costs nothing either way.
+ *  - the relay never connected, or its dial was skipped because it refused
+ *    moments ago: the pool fires `oneose` regardless (measured 2026-11-18, a
+ *    refused connection read as answered in a millisecond);
+ *  - the relay connected and turned the REQ down (CLOSED), or asked for a
+ *    sign-in and refused ours;
+ *  - the relay connected and then dropped the socket. WebKit reports that as
+ *    an error, the library ends every read on the relay at once, and a re-dial
+ *    succeeds a moment later (measured 2026-11-19: answered, in ~100 ms, with
+ *    zero events). Chromium reports only a close and the library reconnects
+ *    quietly, so the same relay read differently in the two engines;
+ *  - the relay connected and said nothing, and the library ended the stream
+ *    itself at its `maxWait`.
  *
- * Our own timer firing is NOT an answer, and it still wins if the connection
- * check has not come back by then.
+ * An earlier fix asked "is any of them connected?" when the stream ended. That
+ * caught the first of these and none of the rest: in the other three the relay
+ * IS connected, it just has not answered.
  *
- * What `answered` does not tell apart, both measured the same day and both
- * left as they were:
- *  - a relay we connected to that turned the REQ down (CLOSED) still ends the
- *    stream, and reads as answered;
- *  - a connected relay that says nothing gets an end-of-stream from the
- *    library at the pool's `maxWait` (DEFAULT_READ_MAX_WAIT_MS), so it reads
- *    as answered to a caller whose timeout is longer than that, and as
- *    unanswered to one whose timeout is shorter.
+ * So each relay is asked in a read of its own, and the library tells the two
+ * endings apart by what follows: when it ends a stream on a relay's behalf, the
+ * close arrives in the same turn; behind a relay's own EOSE there is none.
+ * (`relay-reach-answered.test.ts` pins that ordering against the library; the
+ * health credit in nostr.ts leans on it too.) The library's own made-up ending
+ * is pushed out past our timer, so it can never arrive at all.
+ *
+ * How long it waits: until every relay has answered or dropped out, or until
+ * `timeoutMs`. Once one relay has answered, the rest get no longer than the
+ * pool's usual wait (DEFAULT_READ_MAX_WAIT_MS), so one silent relay cannot hold
+ * a read that already has its answer. When the timer ends the read, `answered`
+ * is whatever is true by then: one real answer among silent relays is an
+ * answer, and none is not.
  *
  * Events that DID arrive are always returned, answered or not: a relay that
  * sent three entries and then went quiet still told us about three entries.
@@ -181,25 +197,59 @@ export async function queryAnswered(
   filter: Filter,
   timeoutMs = 15_000,
 ): Promise<{ events: NostrEvent[]; answered: boolean }> {
-  if (relayUrls.length === 0) return { events: [], answered: false };
+  const urls = Array.from(new Set(relayUrls));
+  if (urls.length === 0) return { events: [], answered: false };
   return new Promise((resolve) => {
     const events: NostrEvent[] = [];
+    const seen = new Set<string>();
+    const subs: { close(): void }[] = [];
     let settled = false;
-    let sub: { close(): void } | undefined;
+    let answeredBy = 0;
+    let waitingOn = urls.length;
+    let restHadTheirTime = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const settle = (answered: boolean) => {
+    let restTimer: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
       if (settled) return;
       settled = true;
-      try { sub?.close(); } catch {}
-      if (timer) clearTimeout(timer);
-      resolve({ events, answered });
+      clearTimeout(timer);
+      clearTimeout(restTimer);
+      for (const sub of subs) { try { sub.close(); } catch {} }
+      resolve({ events, answered: answeredBy > 0 });
     };
-    sub = pool.subscribeMany(relayUrls, filter, {
-      onevent(e: NostrEvent) { if (!settled) events.push(e); },
-      // The stream ended. Whether anyone was there to end it is a separate
-      // question, and connecting is the only thing that answers it.
-      oneose() { canReachAny(relayUrls).then(settle); },
-    });
-    timer = setTimeout(() => settle(false), timeoutMs);
+    const relayDone = (answered: boolean) => {
+      if (settled) return;
+      if (answered) answeredBy++;
+      waitingOn--;
+      if (waitingOn === 0 || (answeredBy > 0 && restHadTheirTime)) settle();
+    };
+    for (const url of urls) {
+      let counted = false;
+      let closed = false;
+      const done = (answered: boolean) => { if (!counted) { counted = true; relayDone(answered); } };
+      try {
+        subs.push(pool.subscribeMany([url], filter, {
+          maxWait: timeoutMs + MADE_UP_EOSE_MARGIN_MS,
+          onevent(e: NostrEvent) {
+            if (settled || seen.has(e.id)) return;
+            seen.add(e.id);
+            events.push(e);
+          },
+          // Decided one microtask on: a close in the same turn means the
+          // library ended this stream for the relay, not the relay itself.
+          oneose() { queueMicrotask(() => done(!closed)); },
+          onclose() { closed = true; },
+        }));
+      } catch {
+        // Not a relay address at all: one more relay that did not answer.
+        done(false);
+      }
+    }
+    if (settled) return;
+    timer = setTimeout(settle, timeoutMs);
+    restTimer = setTimeout(() => {
+      restHadTheirTime = true;
+      if (answeredBy > 0) settle();
+    }, Math.min(timeoutMs, DEFAULT_READ_MAX_WAIT_MS));
   });
 }
