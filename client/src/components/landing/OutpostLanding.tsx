@@ -571,8 +571,9 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
         <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", flexDirection: "column", gap: "clamp(40px, 6vw, 64px)", fontSize: 15, color: "var(--ink2)" }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "40px 64px" }}>
             <div style={{ flex: "1 1 280px", maxWidth: 360, display: "flex", flexDirection: "column", gap: 14 }}>
-              <a href="#top" onClick={toTop} style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 44, alignSelf: "flex-start", color: "var(--ink)", fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em" }}>
-                <Otto size={30} /> Outpost
+              {/* The same logo as the header, at rest as the full name. */}
+              <a href="#top" onClick={toTop} data-testid="landing-footer-logo" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, alignSelf: "flex-start", color: "var(--ink)" }}>
+                <RelayLogo state="full" size={20} mark={<Otto size={30} />} />
               </a>
               <p style={{ margin: 0, textWrap: "pretty" } as CSSProperties}>The next phase of the internet.</p>
             </div>

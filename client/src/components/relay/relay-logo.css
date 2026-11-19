@@ -39,6 +39,8 @@
 .rl[data-s=relay] .rl-eyes{transform:translateX(-5px)}
 .rl[data-s=full] .rl-eyes{opacity:0;transform:scale(.4)}
 .rl[data-s] .rl-eyes ellipse{animation:rl-blink 4.2s infinite}
+/* As a letter the eyes are away, so they do not keep blinking unseen: at rest the full name holds still. */
+.rl[data-s=full] .rl-eyes ellipse{animation:none}
 .rl[data-s=full] .rl-dot{animation:rl-pulse .7s .55s both}
 .rl[data-s=icon] .rl-m{animation:rl-hop .5s .5s both}
 @keyframes rl-blink{0%,91%,100%{transform:none}95%{transform:scaleY(.1)}}

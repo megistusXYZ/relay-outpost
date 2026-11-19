@@ -209,6 +209,8 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 .outpost-landing .rl[data-s="full"] .otto .ring { stroke-width: 11; }
 .outpost-landing .rl .otto .look { transition: transform 0.3s ease-out, opacity 0.25s linear; }
 .outpost-landing .rl[data-s="full"] .otto .look { opacity: 0; }
+/* ...and do not keep blinking unseen: as the full name, the logo holds still. */
+.outpost-landing .rl[data-s="full"] .otto .blink { animation: none; }
 /* While the logo tells its name the page waits (.is-pre); it fades in as the logo lands (.is-landing). */
 .outpost-landing.is-pre > :not(header), .outpost-landing.is-pre .lg-hide { opacity: 0; pointer-events: none; }
 .outpost-landing.is-landing > :not(header), .outpost-landing.is-landing .lg-hide { transition: opacity 0.6s linear 0.15s; }

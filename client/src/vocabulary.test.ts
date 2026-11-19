@@ -56,7 +56,7 @@ const RETIRED: Array<[string, RegExp]> = [
 
 /** Where a retired word is allowed, and why. Keep this list short and named. */
 const ALLOW: Array<{ file: RegExp; word?: RegExp; why: string }> = [
-  { file: /GalaxyWarpOverlay\.tsx|app-sidebar\.tsx|pages\/Login\.tsx|landing\/OutpostWordmark\.tsx/, word: /^OUTPOST$|RELAY OUTPOST|^Outpost$/, why: "the wordmark" },
+  { file: /GalaxyWarpOverlay\.tsx|app-sidebar\.tsx|pages\/Login\.tsx/, word: /^OUTPOST$|RELAY OUTPOST|^Outpost$/, why: "the wordmark" },
   { file: /use-document-title\.ts/, word: /Beyond the Algorithm/, why: "the tagline" },
   { file: /WotVsAlgorithms\.tsx|WtfIsThis\.tsx/, word: /Web of Trust/, why: "the essay that explains it, and its card" },
   { file: /pages\/LiveStreams\.tsx|components\/live\//, word: /\bchannels?\b/i, why: "a broadcaster's live channel is a channel" },
