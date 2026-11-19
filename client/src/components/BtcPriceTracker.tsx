@@ -530,7 +530,7 @@ export function UnifiedBtcBadge() {
             <div className={`transition-all duration-200 ${mode === "price" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full absolute inset-0"}`}>
               {data ? (
                 <span className={`text-xs font-semibold tabular-nums transition-colors duration-300 whitespace-nowrap ${
-                  priceFlash === "up" ? "text-success dark:text-emerald-400" : priceFlash === "down" ? "text-danger dark:text-red-400" : "text-foreground/80"
+                  priceFlash === "up" ? "text-success dark:text-emerald-400" : priceFlash === "down" ? "text-danger dark:text-red-400" : "text-foreground"
                 }`} data-testid="text-unified-price">
                   ${formatPrice(data.price)}
                 </span>
@@ -545,17 +545,17 @@ export function UnifiedBtcBadge() {
               {balanceLoading && balance === null ? (
                 <span className="w-8 h-3 rounded bg-foreground/10 dark:bg-white/10 animate-pulse inline-block" />
               ) : balance !== null ? (
-                <span className={`text-xs font-semibold tabular-nums text-foreground/80 whitespace-nowrap transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`} data-testid="text-unified-balance">
+                <span className={`text-xs font-semibold tabular-nums text-foreground whitespace-nowrap transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`} data-testid="text-unified-balance">
                   <span className="hidden sm:inline">{balance.toLocaleString()}</span>
                   <span className="sm:hidden">{formatSatsCompact(balance)}</span>
                 </span>
               ) : (
-                <span className="text-muted-foreground/40 text-xs">--</span>
+                <span className="text-muted-foreground text-xs">--</span>
               )}
             </div>
           </div>
           {data && mode === "price" && data.changePercent24h !== 0 && (
-            <span className={`text-[10px] tabular-nums font-medium flex items-center gap-0.5 ${isPositive ? "text-success dark:text-emerald-400/80" : "text-danger dark:text-red-400/80"}`} data-testid="text-unified-change">
+            <span className={`text-xs tabular-nums font-medium flex items-center gap-0.5 ${isPositive ? "text-success" : "text-danger"}`} data-testid="text-unified-change">
               {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
               {isPositive ? "+" : ""}{data.changePercent24h.toFixed(1)}%
             </span>
@@ -585,7 +585,7 @@ export function UnifiedBtcBadge() {
           <div className="px-4 pt-4 pb-2">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <svg className="w-6 h-6 text-amber-800 dark:text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-6 h-6 text-warning" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M14.97 12.75H14.2H9.53003V15.58H10.84H14.97C15.92 15.58 16.7 14.94 16.7 14.16C16.7 13.38 15.92 12.75 14.97 12.75Z" />
                   <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM14.97 17.08H13.32V18.5C13.32 18.91 12.98 19.25 12.57 19.25C12.16 19.25 11.82 18.91 11.82 18.5V17.08H10.84H10.61V18.5C10.61 18.91 10.27 19.25 9.86 19.25C9.45 19.25 9.11 18.91 9.11 18.5V17.08H8.78H7.05C6.64 17.08 6.3 16.74 6.3 16.33C6.3 15.92 6.64 15.58 7.05 15.58H8.03V12V8.42H7.05C6.64 8.42 6.3 8.08 6.3 7.67C6.3 7.26 6.64 6.92 7.05 6.92H8.78H9.11V5.5C9.11 5.09 9.45 4.75 9.86 4.75C10.27 4.75 10.61 5.09 10.61 5.5V6.92H10.84H11.82V5.5C11.82 5.09 12.16 4.75 12.57 4.75C12.98 4.75 13.32 5.09 13.32 5.5V6.92H14.2C15.75 6.92 17.12 8.28 17.12 9.84C17.12 10.51 16.88 11.12 16.5 11.62C17.51 12.11 18.2 13.07 18.2 14.18C18.2 15.77 16.75 17.08 14.97 17.08Z" />
                   <path d="M15.62 9.83016C15.62 9.17016 15 8.41016 14.2 8.41016H10.84H9.53003V11.2402H14.2C14.98 11.2502 15.62 10.6102 15.62 9.83016Z" />
@@ -615,16 +615,16 @@ export function UnifiedBtcBadge() {
                   <Wallet className="w-4 h-4 text-brand" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground/60">Wallet Balance</p>
-                  <p className={`text-sm font-semibold tabular-nums text-foreground/90 transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`} data-testid="text-panel-wallet-balance">
-                    {balance.toLocaleString()} <span className="text-xs font-normal text-muted-foreground/50">sats</span>
+                  <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                  <p className={`text-sm font-semibold tabular-nums text-foreground transition-all duration-200 ${balanceHidden ? "blur-[6px] select-none" : ""}`} data-testid="text-panel-wallet-balance">
+                    {balance.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">sats</span>
                   </p>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               </button>
               <button
                 onClick={toggleBalanceVisibility}
-                className="px-3 py-2.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer shrink-0"
+                className="px-3 py-2.5 text-muted-foreground transition-colors cursor-pointer shrink-0"
                 data-testid="button-toggle-balance-panel"
                 title={balanceHidden ? "Show balance" : "Hide balance"}
               >
@@ -637,24 +637,24 @@ export function UnifiedBtcBadge() {
             <div className="grid grid-cols-2 gap-3 text-xs">
               {data.high24h > 0 && (
                 <div>
-                  <p className="text-muted-foreground/50 mb-0.5">24h High</p>
-                  <p className="font-medium text-foreground/80">${formatPrice(data.high24h)}</p>
+                  <p className="text-muted-foreground mb-0.5">24h High</p>
+                  <p className="font-medium text-foreground">${formatPrice(data.high24h)}</p>
                 </div>
               )}
               {data.low24h > 0 && (
                 <div>
-                  <p className="text-muted-foreground/50 mb-0.5">24h Low</p>
-                  <p className="font-medium text-foreground/80">${formatPrice(data.low24h)}</p>
+                  <p className="text-muted-foreground mb-0.5">24h Low</p>
+                  <p className="font-medium text-foreground">${formatPrice(data.low24h)}</p>
                 </div>
               )}
               <div>
-                <p className="text-muted-foreground/50 mb-0.5">Sats / $1</p>
-                <p className="font-medium text-foreground/80">{satsPerDollar.toLocaleString()}</p>
+                <p className="text-muted-foreground mb-0.5">Sats / $1</p>
+                <p className="font-medium text-foreground">{satsPerDollar.toLocaleString()}</p>
               </div>
               {data.volume24h > 0 && (
                 <div>
-                  <p className="text-muted-foreground/50 mb-0.5">Volume</p>
-                  <p className="font-medium text-foreground/80">{formatCompact(data.volume24h)}</p>
+                  <p className="text-muted-foreground mb-0.5">Volume</p>
+                  <p className="font-medium text-foreground">{formatCompact(data.volume24h)}</p>
                 </div>
               )}
             </div>
@@ -663,9 +663,9 @@ export function UnifiedBtcBadge() {
           {block && (
             <div className="px-4 py-2 border-t border-white/[0.06]">
               <div className="flex items-center gap-1.5 text-xs">
-                <Box className="w-3 h-3 text-amber-800/70 dark:text-amber-400/70" />
-                <span className="text-muted-foreground/50">Block</span>
-                <span className="font-mono font-medium text-foreground/80">{block.height.toLocaleString()}</span>
+                <Box className="w-3 h-3 text-warning" />
+                <span className="text-muted-foreground">Block</span>
+                <span className="font-mono font-medium text-foreground">{block.height.toLocaleString()}</span>
               </div>
             </div>
           )}
@@ -674,20 +674,20 @@ export function UnifiedBtcBadge() {
             <div className="px-4 py-2 border-t border-white/[0.06]">
               <div className="flex items-center gap-1.5 text-xs mb-1.5">
                 <Fuel className="w-3 h-3 text-orange-800/70 dark:text-orange-400/70" />
-                <span className="text-muted-foreground/50">Mempool Fees (sat/vB)</span>
+                <span className="text-muted-foreground">Mempool Fees (sat/vB)</span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
-                  <p className="text-muted-foreground/40 text-[10px]">Fast</p>
-                  <p className="font-mono font-medium text-foreground/80">{fees.fastestFee}</p>
+                  <p className="text-muted-foreground text-xs">Fast</p>
+                  <p className="font-mono font-medium text-foreground">{fees.fastestFee}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground/40 text-[10px]">Medium</p>
-                  <p className="font-mono font-medium text-foreground/80">{fees.halfHourFee}</p>
+                  <p className="text-muted-foreground text-xs">Medium</p>
+                  <p className="font-mono font-medium text-foreground">{fees.halfHourFee}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground/40 text-[10px]">Slow</p>
-                  <p className="font-mono font-medium text-foreground/80">{fees.hourFee}</p>
+                  <p className="text-muted-foreground text-xs">Slow</p>
+                  <p className="font-mono font-medium text-foreground">{fees.hourFee}</p>
                 </div>
               </div>
             </div>
@@ -696,11 +696,11 @@ export function UnifiedBtcBadge() {
           {pubkey && (
             <div className="px-4 py-3 border-t border-white/[0.06]" data-testid="container-unified-zap-activity">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[12px] text-muted-foreground/60 font-medium">Lightning activity (90d)</p>
+                <p className="text-[12px] text-muted-foreground font-medium">Lightning activity (90d)</p>
                 <button
                   onClick={() => refreshZapActivity(true)}
                   disabled={zapLoading}
-                  className="text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors disabled:opacity-30"
+                  className="text-muted-foreground transition-colors disabled:opacity-30"
                   data-testid="button-unified-refresh-zap"
                 >
                   <RefreshCw className={`w-3 h-3 ${zapLoading ? "animate-spin" : ""}`} />
@@ -709,23 +709,23 @@ export function UnifiedBtcBadge() {
               {zapActivity && !zapLoading ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-start gap-2">
-                    <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-800/70 dark:text-emerald-400/70 mt-0.5 shrink-0" />
+                    <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-800/70 mt-0.5 shrink-0" />
                     <div>
-                      <p className={`text-xs font-semibold tabular-nums text-foreground/80 transition-all duration-200 ${balanceHidden ? "blur-[5px] select-none" : ""}`} data-testid="text-unified-zaps-received">
+                      <p className={`text-xs font-semibold tabular-nums text-foreground transition-all duration-200 ${balanceHidden ? "blur-[5px] select-none" : ""}`} data-testid="text-unified-zaps-received">
                         {formatSats(zapActivity.received)} sats
                       </p>
-                      <p className="text-[11px] text-muted-foreground/50">
+                      <p className="text-xs text-muted-foreground">
                         {zapActivity.receivedCount} received
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <ArrowUpRight className="w-3.5 h-3.5 text-amber-800/70 dark:text-amber-400/70 mt-0.5 shrink-0" />
+                    <ArrowUpRight className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
                     <div>
-                      <p className={`text-xs font-semibold tabular-nums text-foreground/80 transition-all duration-200 ${balanceHidden ? "blur-[5px] select-none" : ""}`} data-testid="text-unified-zaps-sent">
+                      <p className={`text-xs font-semibold tabular-nums text-foreground transition-all duration-200 ${balanceHidden ? "blur-[5px] select-none" : ""}`} data-testid="text-unified-zaps-sent">
                         {formatSats(zapActivity.sent)} sats
                       </p>
-                      <p className="text-[11px] text-muted-foreground/50">
+                      <p className="text-xs text-muted-foreground">
                         {zapActivity.sentCount} sent
                       </p>
                     </div>
@@ -742,10 +742,10 @@ export function UnifiedBtcBadge() {
 
           <div className="px-4 py-3 border-t border-white/[0.06]">
             <div className="flex items-center gap-2 mb-2">
-              <ArrowRightLeft className="w-3 h-3 text-muted-foreground/50" />
-              <span className="text-xs text-muted-foreground/50">Convert</span>
+              <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Convert</span>
               <button
-                className="ml-auto text-[10px] text-brand/60 hover:text-brand/80 transition-colors"
+                className="ml-auto text-xs text-brand transition-colors"
                 onClick={() => {
                   setSatsInput("");
                   setConvertMode((m) => (m === "usd-to-sats" ? "sats-to-usd" : "usd-to-sats"));
@@ -766,7 +766,7 @@ export function UnifiedBtcBadge() {
                 data-testid="input-unified-convert"
               />
               {convertedValue && (
-                <span className="text-xs font-medium text-foreground/80 whitespace-nowrap">{convertedValue}</span>
+                <span className="text-xs font-medium text-foreground whitespace-nowrap">{convertedValue}</span>
               )}
             </div>
           </div>
@@ -776,7 +776,7 @@ export function UnifiedBtcBadge() {
               href="https://bitcoin.org/bitcoin.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors flex items-center gap-1"
+              className="text-xs text-muted-foreground transition-colors flex items-center gap-1"
               data-testid="link-unified-whitepaper"
             >
               <Info className="w-2.5 h-2.5" /> Bitcoin Whitepaper

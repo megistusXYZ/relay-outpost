@@ -243,7 +243,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
               {fastestRelay ? fastestRelay.url.replace("wss://", "") : "—"}
             </p>
             {fastestRelay?.latency !== null && fastestRelay?.latency !== undefined && (
-              <p className="text-xs text-muted-foreground/50 mt-0.5">{fastestRelay.latency}ms</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{fastestRelay.latency}ms</p>
             )}
           </Card>
 
@@ -255,7 +255,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
             <p className="text-sm font-mono text-brand" data-testid="text-avg-latency">
               {avgLatency !== null ? `${avgLatency}ms` : "—"}
             </p>
-            <p className="text-xs text-muted-foreground/50 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {connectedRelays.length}/{allRelays.length} connected
             </p>
           </Card>
@@ -266,11 +266,11 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
               <span className="text-xs text-muted-foreground font-medium">Relay health</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap" data-testid="text-relay-health-summary">
-              <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60">
+              <Badge variant="outline" className="text-xs border-green-400/20 text-success dark:text-green-400/60">
                 {healthyCount} Healthy
               </Badge>
               {coolingCount > 0 && (
-                <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">
+                <Badge variant="outline" className="text-xs border-red-400/20 text-danger dark:text-red-400/60">
                   {coolingCount} Cooldown
                 </Badge>
               )}
@@ -339,23 +339,23 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                     data-testid={`row-relay-${idx}`}
                   >
                     <td className="py-2 pr-3">
-                      <span className="font-mono text-brand/80 whitespace-nowrap" data-testid={`text-relay-url-${idx}`}>
+                      <span className="font-mono text-brand whitespace-nowrap" data-testid={`text-relay-url-${idx}`}>
                         {relay.url.replace("wss://", "")}
                       </span>
                     </td>
                     <td className="py-2 px-3">
                       {relay.testing ? (
-                        <Badge variant="outline" className="text-[10px] border-yellow-400/20 text-yellow-800/60 dark:text-yellow-400/60" data-testid={`badge-status-${idx}`}>
+                        <Badge variant="outline" className="text-xs border-yellow-400/20 text-yellow-800/60 dark:text-yellow-400/60" data-testid={`badge-status-${idx}`}>
                           <RefreshCw className="w-2.5 h-2.5 mr-0.5 animate-spin" />
                           Testing
                         </Badge>
                       ) : relay.connected ? (
-                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60" data-testid={`badge-status-${idx}`}>
+                        <Badge variant="outline" className="text-xs border-green-400/20 text-success dark:text-green-400/60" data-testid={`badge-status-${idx}`}>
                           <Wifi className="w-2.5 h-2.5 mr-0.5" />
                           Online
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60" data-testid={`badge-status-${idx}`}>
+                        <Badge variant="outline" className="text-xs border-red-400/20 text-danger dark:text-red-400/60" data-testid={`badge-status-${idx}`}>
                           <WifiOff className="w-2.5 h-2.5 mr-0.5" />
                           Offline
                         </Badge>
@@ -363,17 +363,17 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                     </td>
                     <td className="py-2 px-3" data-testid={`badge-health-${idx}`}>
                       {healthStatus === "healthy" ? (
-                        <Badge variant="outline" className="text-[10px] border-green-400/20 text-success dark:text-green-400/60">
+                        <Badge variant="outline" className="text-xs border-green-400/20 text-success dark:text-green-400/60">
                           <Shield className="w-2.5 h-2.5 mr-0.5" />
                           Healthy
                         </Badge>
                       ) : healthStatus === "degraded" ? (
-                        <Badge variant="outline" className="text-[10px] border-amber-400/20 text-amber-800/60 dark:text-amber-400/60">
+                        <Badge variant="outline" className="text-xs border-amber-400/20 text-warning">
                           <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
                           Degraded{hd ? ` (${hd.failures})` : ""}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] border-red-400/20 text-danger dark:text-red-400/60">
+                        <Badge variant="outline" className="text-xs border-red-400/20 text-danger dark:text-red-400/60">
                           <Timer className="w-2.5 h-2.5 mr-0.5" />
                           Cooldown
                         </Badge>
@@ -388,9 +388,9 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                       {relay.latency !== null ? (
                         <span className="text-brand">{relay.latency}ms</span>
                       ) : hd?.avgLatency && hd.avgLatency < 5000 ? (
-                        <span className="text-brand/60">{hd.avgLatency}ms</span>
+                        <span className="text-brand">{hd.avgLatency}ms</span>
                       ) : (
-                        <span className="text-muted-foreground/40">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-success-rate-${idx}`}>
@@ -399,23 +399,23 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
                           {successRate}%
                         </span>
                       ) : (
-                        <span className="text-muted-foreground/40">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="py-2 px-3 text-right font-mono" data-testid={`text-throughput-${idx}`}>
                       {relay.throughput !== null ? (
                         <span className="text-brand">{relay.throughput} evt/s</span>
                       ) : (
-                        <span className="text-muted-foreground/40">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="py-2 pl-3" data-testid={`text-software-${idx}`}>
                       {relay.nip11?.software || relay.nip11?.version ? (
-                        <span className="text-muted-foreground/70 whitespace-nowrap">
+                        <span className="text-muted-foreground whitespace-nowrap">
                           {relay.nip11.software?.split("/").pop() ?? ""}{relay.nip11.version ? ` v${relay.nip11.version}` : ""}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground/40">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>
@@ -431,7 +431,7 @@ export function RelayHealthMonitor({ relays }: RelayHealthMonitorProps = {}) {
         <Card className="glass-card border-brand/15 p-6" data-testid="card-empty-state">
           <div className="flex flex-col items-center text-center gap-3">
             <Activity className="w-8 h-8 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground/60">
+            <p className="text-sm text-muted-foreground">
               Click "Test All" to measure relay health, latency, and throughput.
             </p>
           </div>

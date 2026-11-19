@@ -45,7 +45,7 @@ export function SidebarWallet({ closeMobileNav }: { closeMobileNav: () => void }
 
   return (
     <>
-      <SidebarMenuSubButton asChild className="text-xs [&>svg]:!text-amber-500/90">
+      <SidebarMenuSubButton asChild className="text-xs [&>svg]:!text-warning">
         <Link
           href="/account?tab=wallet"
           onClick={closeMobileNav}
@@ -55,11 +55,11 @@ export function SidebarWallet({ closeMobileNav }: { closeMobileNav: () => void }
           <BtcZapIcon className="w-3.5 h-3.5" />
           <span className="flex-1 min-w-0 flex items-baseline gap-1">
             {balanceLoading && sats === null ? (
-              <span className="text-muted-foreground/60">···</span>
+              <span className="text-muted-foreground">···</span>
             ) : sats !== null ? (
               <span className={`tabular-nums ${hidden ? "blur-[5px] select-none" : ""}`}>{sats}</span>
             ) : (
-              <span className="text-muted-foreground/70">Wallet</span>
+              <span className="text-muted-foreground">Wallet</span>
             )}
           </span>
         </Link>
@@ -69,7 +69,7 @@ export function SidebarWallet({ closeMobileNav }: { closeMobileNav: () => void }
         onClick={toggleVisibility}
         title={hidden ? "Show balance" : "Hide balance"}
         aria-label={hidden ? "Show balance" : "Hide balance"}
-        className="absolute right-1 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/40 transition-colors hover:bg-sidebar-accent hover:text-amber-500"
+        className="absolute right-1 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-amber-500"
         data-testid="button-sidebar-wallet-visibility"
       >
         {hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}

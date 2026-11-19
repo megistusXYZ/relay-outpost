@@ -41,10 +41,10 @@ import { Calendar, Clock } from "lucide-react";
 
 function getRelayModeStyle(preset: string): { text: string; icon: string; dot: string } {
   switch (preset) {
-    case "private": return { text: "text-amber-600 dark:text-amber-400/80", icon: "text-amber-500/70", dot: "bg-amber-400" };
-    case "public": return { text: "text-success dark:text-green-400/80", icon: "text-success dark:text-green-500/70", dot: "bg-green-400" };
-    case "all": return { text: "text-brand dark:text-brand/80", icon: "text-brand/70", dot: "bg-brand" };
-    default: return { text: "text-muted-foreground/70", icon: "text-muted-foreground/50", dot: "bg-muted-foreground/40" };
+    case "private": return { text: "text-warning", icon: "text-amber-500/70", dot: "bg-amber-400" };
+    case "public": return { text: "text-success", icon: "text-success dark:text-green-500/70", dot: "bg-green-400" };
+    case "all": return { text: "text-brand", icon: "text-brand/70", dot: "bg-brand" };
+    default: return { text: "text-muted-foreground", icon: "text-muted-foreground/50", dot: "bg-muted-foreground/40" };
   }
 }
 
@@ -1166,21 +1166,21 @@ export function CreatePostFAB() {
 
                 {outpostCount === 0 ? (
                   <button
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-muted-foreground/55 hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors"
                     onClick={() => setShowRelayPicker(true)}
                     data-testid="button-relay-manage-link"
                     title="Choose where this posts"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                     <span className="truncate">Posting to defaults</span>
-                    <span className="opacity-40">·</span>
-                    <span className="text-brand/80 hover:text-brand">Manage</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-brand">Manage</span>
                   </button>
                 ) : (() => {
                   const ms = getRelayModeStyle(relayPref.preset);
                   return (
                     <button
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors ${ms.text}`}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors ${ms.text}`}
                       onClick={() => setShowRelayPicker(true)}
                       data-testid="button-relay-selector"
                     >
@@ -1452,7 +1452,7 @@ export function CreatePostFAB() {
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[10px] text-muted-foreground/40">{age}</span>
                               {draft.relayLabel && (
-                                <span className={`text-[10px] ${ms.text} flex items-center gap-1`}>
+                                <span className={`text-xs ${ms.text} flex items-center gap-1`}>
                                   <span className={`w-1.5 h-1.5 rounded-full ${ms.dot}`} />
                                   {draft.relayLabel}
                                 </span>

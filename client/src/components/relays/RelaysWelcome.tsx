@@ -54,7 +54,7 @@ export function HostedCard({ option }: { option: StartOption }) {
         <div className="sm:border-l sm:border-black/[0.06] sm:dark:border-white/[0.08] sm:pl-8">
           <ul className="space-y-2.5">
             {option.points.map((p) => (
-              <li key={p} className="flex items-center gap-2.5 text-[14px] text-foreground/90">
+              <li key={p} className="flex items-center gap-2.5 text-[14px] text-foreground">
                 <Check className="w-4 h-4 shrink-0 text-brand" strokeWidth={2} aria-hidden="true" />
                 {p}
               </li>
@@ -117,7 +117,7 @@ export function SelfHostSection({ option }: { option: StartOption }) {
       </ul>
       <p className="mt-3 px-1 text-[12px] text-muted-foreground">
         Developers can build their own with{" "}
-        <a href={BUILD_YOUR_OWN.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{BUILD_YOUR_OWN.name}</a>.
+        <a href={BUILD_YOUR_OWN.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline-offset-4 hover:underline">{BUILD_YOUR_OWN.name}</a>.
       </p>
     </section>
   );
@@ -181,7 +181,7 @@ export function RelaysWelcome({ widerNetwork }: { widerNetwork?: { on: boolean }
       </p>
       <p className="mt-3 text-center text-[13px] text-muted-foreground">
         Building something?{" "}
-        <Link href="/my-relays/console" className="font-medium text-foreground/80 underline-offset-4 hover:underline" data-testid="relays-console-link">Open the console</Link>
+        <Link href="/my-relays/console" className="font-medium text-foreground underline-offset-4 hover:underline" data-testid="relays-console-link">Open the console</Link>
       </p>
     </div>
   );

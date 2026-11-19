@@ -44,7 +44,7 @@ function getModeIconColor(preset: RelayPreset): { text: string; hover: string; g
       glow: "drop-shadow-[0_0_4px_rgba(34,197,94,0.3)]",
     };
     case "all": return {
-      text: "text-brand/80 dark:text-brand/70",
+      text: "text-brand",
       hover: "hover:text-brand hover:bg-brand/10",
       glow: "drop-shadow-[0_0_4px_rgba(243,245,248,0.3)]",
     };
@@ -76,7 +76,7 @@ function HubContent({
     <div className="flex flex-col gap-1">
       {hasPublishToggle && (
         <>
-          <p className="text-[11px] text-muted-foreground font-medium px-1 pt-0.5 pb-1">
+          <p className="text-xs text-muted-foreground font-medium px-1 pt-0.5 pb-1">
             Publish mode
           </p>
           <div className="space-y-0.5">
@@ -97,15 +97,15 @@ function HubContent({
                   data-testid={`relay-hub-preset-${key}`}
                 >
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                    active ? "bg-brand/15 text-brand" : "bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground/50"
+                    active ? "bg-brand/15 text-brand" : "bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground"
                   }`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className={`text-[13px] font-medium block leading-tight ${
-                      active ? "text-brand" : "text-foreground/80"
+                      active ? "text-brand" : "text-foreground"
                     }`}>{label}</span>
-                    <span className="text-[10px] text-muted-foreground/40 leading-tight">{description}</span>
+                    <span className="text-xs text-muted-foreground leading-tight">{description}</span>
                   </div>
                   {active && (
                     <div className="w-4 h-4 rounded-full bg-brand/20 flex items-center justify-center shrink-0">
@@ -122,7 +122,7 @@ function HubContent({
           {preset === "custom" && (
             <div className="flex items-center gap-2.5 px-2.5 py-1.5 mt-0.5">
               <SlidersHorizontal className="w-3 h-3 text-slate-400/60 shrink-0" />
-              <span className="text-[10px] text-slate-400/60 font-medium">Custom selection active</span>
+              <span className="text-xs text-slate-400/60 font-medium">Custom selection active</span>
             </div>
           )}
           <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1" />
@@ -134,10 +134,10 @@ function HubContent({
         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] border border-transparent hover:border-black/[0.06] dark:hover:border-white/[0.06] min-h-[40px]"
         data-testid="relay-hub-manage-link"
       >
-        <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground/50">
+        <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground">
           <Satellite className="w-3.5 h-3.5" />
         </div>
-        <span className="text-[13px] font-medium text-foreground/80 flex-1">Manage Relays</span>
+        <span className="text-[13px] font-medium text-foreground flex-1">Manage Relays</span>
         <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
       </button>
 
@@ -147,10 +147,10 @@ function HubContent({
           className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.03] border border-transparent hover:border-black/[0.06] dark:hover:border-white/[0.06] min-h-[40px]"
           data-testid="relay-hub-admin-link"
         >
-          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-brand/10 text-brand/70 dark:text-brand/80">
+          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-brand/10 text-brand">
             <Radio className="w-3.5 h-3.5" />
           </div>
-          <span className="text-[13px] font-medium text-foreground/80 flex-1">Console</span>
+          <span className="text-[13px] font-medium text-foreground flex-1">Console</span>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
         </button>
       )}
@@ -229,7 +229,7 @@ export function RelayHubHeaderControl() {
       ? "text-brand bg-brand/10"
       : modeColor
         ? `${modeColor.text} ${modeColor.hover} hover:scale-110`
-        : "text-brand/70 dark:text-brand/60 hover:text-brand-strong hover:bg-brand/10 hover:scale-110"
+        : "text-brand hover:text-brand-strong hover:bg-brand/10 hover:scale-110"
   }`;
   const triggerIcon = (
     <RelayHubIcon className={`w-[18px] h-[18px] ${
@@ -272,7 +272,7 @@ export function RelayHubHeaderControl() {
               </div>
               <div>
                 <span className="text-xs block font-medium">Relay hub</span>
-                <span className="text-[10px] text-muted-foreground/40 block leading-tight">Manage where your posts go</span>
+                <span className="text-xs text-muted-foreground block leading-tight">Manage where your posts go</span>
               </div>
             </div>
             <HubContent {...hubProps} />
@@ -297,7 +297,7 @@ export function RelayHubHeaderControl() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[240px] p-2.5 glass-dialog-card border-brand/15 shadow-xl"
+        className="w-[272px] p-2.5 glass-dialog-card border-brand/15 shadow-xl"
         data-testid="relay-hub-popover"
       >
         <HubContent {...hubProps} />

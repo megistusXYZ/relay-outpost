@@ -3447,7 +3447,7 @@ function LiveEventCard({ liveEvent }: { liveEvent: LiveEventInfo }) {
                       <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
                       <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[8px] font-bold">{displayName?.charAt(0)?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span className="text-xs font-medium text-brand truncate max-w-[44px] leading-tight">{displayName}</span>
+                    <span className="text-xs font-medium text-white truncate max-w-[44px] leading-tight">{displayName}</span>
                   </div>
                 </div>
               )}
