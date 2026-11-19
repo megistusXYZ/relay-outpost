@@ -23,6 +23,9 @@ import { TrustTierGlyph } from "@/components/nostr-post/trust-tier-glyph";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardViewport } from "@/hooks/use-keyboard-viewport";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayLoader } from "@/components/relay/RelayLoader";
+import { RelayEmpty } from "@/components/relay/RelayEmpty";
+import { RelayReachStatus, reachState } from "@/components/relay/RelayReachStatus";
 import { AddMemberSheet } from "@/components/AddMemberSheet";
 import { SpaceOverflowMenu } from "@/components/space/SpaceOverflowMenu";
 import { Nip29AdminDrawer } from "@/components/space/Nip29AdminDrawer";
@@ -40,7 +43,6 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveFormPanel } from "@/components/ui/responsive-form-panel";
 import { CreateChannelWizard, type CreateChannelOpts } from "@/components/CreateChannelWizard";
 import {
-  MessageSquare,
   Lock,
   Send,
   ArrowLeft,
@@ -69,7 +71,6 @@ import {
   Settings,
   Link2,
   Pin,
-  WifiOff,
   RefreshCw,
   PanelLeft,
 } from "lucide-react";
@@ -2290,9 +2291,9 @@ function ChatRoomView({
         style={{ minHeight: 0 }}
       >
         {loading && messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[120px] gap-3">
-            <RelayOutpostInlineLoader className="w-6 h-6" />
-            <p className="text-xs text-muted-foreground">Loading messages…</p>
+          // The ring waits 0.3 s before it shows, so a room that opens at once never flashes a loader.
+          <div className="flex h-full min-h-[120px] items-center justify-center" data-testid="room-messages-loading">
+            <RelayLoader loading size={28} label="Loading messages" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
@@ -3680,65 +3681,70 @@ export function CommsTab({
     />
   );
 
+  // What this relay told us about its rooms, in the four outcomes the logo can show. While the
+  // list is still being fetched there is no result yet, and nothing below may be concluded.
+  const roomsReach = reachState(
+    loading ? undefined : { reached: relayReached === true, refusedReason: relayRefused ?? undefined },
+    groups.length === 0,
+  );
+
   if (!loading && groups.length === 0) {
     // Unreachable is checked FIRST, because every branch below makes a claim
     // about what this relay contains, and we have not heard from it. Saying
     // "no rooms yet — be the first!" to someone whose relay is simply down
     // invites them to create a duplicate of a channel that already exists.
-    if (relayRefused) {
+    if (roomsReach === "refused") {
       return (
         <>
-          <Card className="glass-card p-6">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <Lock className="w-6 h-6 text-amber-500/60" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground">This relay didn't accept your sign-in</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
+          <Card className="glass-card p-6" data-testid="rooms-refused">
+            <RelayReachStatus
+              status="refused"
+              stacked
+              className="px-0 py-2"
+              text="This relay didn't accept your sign-in"
+              hint={
+                <>
                   It's up, but it won't show us its rooms until it recognises your account. It said:
                   {" "}<span className="text-foreground">“{relayRefused}”</span>
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs pt-1">
-                  Ask the relay's operator to add you, or sign in with an account it knows.
-                </p>
-              </div>
-              <button
-                onClick={() => setRefreshNonce((n) => n + 1)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs font-medium hover:bg-muted/30 transition-colors"
-                data-testid="button-retry-groups-auth"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Try again
-              </button>
-            </div>
+                  <span className="block pt-1.5">Ask the relay's operator to add you, or sign in with an account it knows.</span>
+                </>
+              }
+              action={
+                <button
+                  onClick={() => setRefreshNonce((n) => n + 1)}
+                  className="inline-flex items-center gap-1.5 px-3 min-h-11 md:min-h-9 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-colors"
+                  data-testid="button-retry-groups-auth"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Try again
+                </button>
+              }
+            />
           </Card>
           {createChannelWizard}
         </>
       );
     }
 
-    if (relayReached === false) {
+    if (roomsReach === "unreachable") {
       return (
         <>
-          <Card className="glass-card p-6">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <WifiOff className="w-6 h-6 text-amber-500/60" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-brand tracking-wide text-foreground">Couldn't reach this relay</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                  It didn't answer, so we don't know what rooms it has. Its chat may be fine — try again in a moment.
-                </p>
-              </div>
-              <button
-                onClick={() => setRefreshNonce((n) => n + 1)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/40 text-xs font-medium hover:bg-muted/30 transition-colors"
-                data-testid="button-retry-groups"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Try again
-              </button>
-            </div>
+          <Card className="glass-card p-6" data-testid="rooms-unreachable">
+            <RelayReachStatus
+              status="unreachable"
+              stacked
+              className="px-0 py-2"
+              text="Couldn't reach this relay"
+              hint="It didn't answer, so we don't know what rooms it has. Its chat may be fine — try again in a moment."
+              action={
+                <button
+                  onClick={() => setRefreshNonce((n) => n + 1)}
+                  className="inline-flex items-center gap-1.5 px-3 min-h-11 md:min-h-9 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted/30 transition-colors"
+                  data-testid="button-retry-groups"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Try again
+                </button>
+              }
+            />
           </Card>
           {createChannelWizard}
         </>
@@ -3779,32 +3785,26 @@ export function CommsTab({
       );
     }
 
+    // The relay answered, and it has no rooms: the one outcome that earns an empty state.
     return (
       <>
-        <Card className="glass-card p-6">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-brand tracking-wide text-foreground">No rooms yet</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                This community doesn't have any group chat rooms yet.
-                {pubkey ? " Be the first — create a room!" : " Rooms may be created by the community operator in the future."}
-              </p>
-            </div>
-            {pubkey && (
+        <Card className="glass-card p-6" data-testid="rooms-empty">
+          <RelayEmpty
+            className="px-0 py-2"
+            title="No rooms yet"
+            hint={`This community doesn't have any group chat rooms yet.${pubkey ? " Be the first — create a room!" : " Rooms may be created by the community operator in the future."}`}
+            action={pubkey ? (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowCreateChannel(true)}
-                className="mt-1 text-xs text-brand gap-1"
+                className="min-h-11 md:min-h-9 text-xs text-brand gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Create room
               </Button>
-            )}
-          </div>
+            ) : undefined}
+          />
         </Card>
         {createChannelWizard}
       </>
@@ -3954,7 +3954,7 @@ export function CommsTab({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-xs text-brand font-medium">Rooms</h2>
-          {loading && <RelayOutpostInlineLoader className="w-3.5 h-3.5" />}
+          {roomsReach === "connecting" && <RelayReachStatus status="connecting" compact size={10} />}
         </div>
         {screened.shown.length > 0 && (
           <span className="text-xs text-muted-foreground">

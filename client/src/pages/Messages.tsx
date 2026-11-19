@@ -10,7 +10,7 @@ import { PersonBadges } from "@/components/PersonBadges";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
 import { eventStore, pool, PROFILE_RELAYS, throttledPoolSubscribe, persistentPoolSubscribe, publishEvent, fetchProfilesCached, searchCachedProfiles, getCachedProfile, filterBlockedRelays, subscriptionAuthAcrossRelays } from "@/lib/nostr";
-import { queryAnswered } from "@/lib/relay-reach";
+import { queryAnswered, canReachAny } from "@/lib/relay-reach";
 import { recordRecentDestination } from "@/lib/recent-destinations";
 import { insertSorted } from "@/lib/message-list";
 import { getProfileContent, KIND_METADATA } from "@/lib/nostr-helpers";
@@ -23,7 +23,8 @@ import { DM_PREFS_EVENT, expirationFor, isMutedChat, isPinned, readDmPrefs, setM
 import { AddPeopleDialog, NameChatDialog, TimerDialog } from "./messages/ThreadDialogs";
 import * as dmCache from "@/lib/dm-cache";
 import { useToast } from "@/hooks/use-toast";
-import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
+import { RelayLoader } from "@/components/relay/RelayLoader";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { MessagesIcon } from "@/components/icons/MessagesIcon";
 import {
@@ -1241,7 +1242,11 @@ export default function Messages() {
         limit: sinceTs ? 100 : 200,
         ...(sinceTs ? { since: sinceTs } : {}) }, 8000);
       const giftWraps = inbox.events as Event[];
-      answered = inbox.answered;
+      // An end-of-stream alone is not an answer: the pool also ends the stream when every
+      // relay failed to connect, which would read as "answered, nothing there" while offline.
+      // It counts only if messages arrived or a relay was really connected. This decides the
+      // empty list's words and nothing else; the fetch and the decrypt below are untouched.
+      answered = inbox.answered && (giftWraps.length > 0 || await canReachAny(fetchRelays));
       setInboxAnswered(answered);
 
       const seenIds = new Set<string>();
@@ -3512,8 +3517,9 @@ export default function Messages() {
             <div className="flex flex-1 flex-col min-h-0 w-full md:max-w-[46rem] md:mx-auto">
             <div className="flex-1" />
             {threadLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <RelayOutpostLoader size="md" label="Loading messages..." />
+              // The ring waits 0.3 s before it shows, so a chat that opens at once never flashes a loader.
+              <div className="flex flex-col items-center justify-center py-12 min-h-[120px]" data-testid="thread-messages-loading">
+                <RelayLoader loading size={28} label="Loading messages" />
               </div>
             ) : visibleMessages.length === 0 ? (
               <div className="text-center py-12">
