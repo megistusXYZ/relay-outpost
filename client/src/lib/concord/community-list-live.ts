@@ -17,12 +17,13 @@ import { leftGroups, hasSeenList, markListSeen } from "./community-list-memory";
 export const COMMUNITY_LIST_SYNCED_EVENT = "concord-community-list-synced";
 
 /**
- * Your relays as the sync sees them. A relay counts as having answered only
- * once it CONNECTED: nostr-tools fires an EOSE for a relay that failed to
- * connect. queryAnswered checks that for the set as a whole (answered if ANY
- * relay asked is connected); the sync needs it per relay, because only when
- * EVERY one of your relays answered may it conclude that you have no List
- * yet. So each relay is proved reachable first and only those are asked.
+ * Your relays as the sync sees them. queryAnswered says whether ANY relay
+ * asked sent its own end of stream; the sync needs more than that, because
+ * only when EVERY one of your relays answered may it conclude that you have
+ * no List yet. So each relay is proved reachable first, only those are asked,
+ * and `allAnswered` takes all of them connecting and at least one answering.
+ * That is still short of every one answering: a relay that connected and then
+ * declined or stayed silent is counted in, as long as another one answered.
  */
 export function listRelaysAt(urls: string[]): ListRelays {
   return {

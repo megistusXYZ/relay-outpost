@@ -29,18 +29,15 @@ const code = SRC
 describe("a missing DM inbox must be an answer, not a silence", () => {
   it("asks through queryAnswered, so 'nobody answered' is a distinct outcome", () => {
     // The original guard probed canReachAny AFTER an empty querySync, at this
-    // one call site. queryAnswered carries that check inside it: `answered`
-    // is true only when the stream ended and one of the relays asked is
-    // connected, so an unreachable set and our own timer both come back
+    // one call site. queryAnswered carries the question inside it: `answered`
+    // is true only when a relay sent its own end of stream, so an unreachable
+    // set, a relay that refuses the REQ (CLOSED auth-required), one that drops
+    // the socket, one that says nothing, and our own timer all come back
     // unanswered. (It was first written to trust the end-of-stream alone,
-    // which the pool also sends for a relay that never connected. That read
-    // "every relay down" as "asked, and there is none" until it was measured
-    // in a browser; relay-reach-answered.test.ts pins the fix against the
-    // real library.)
-    //
-    // Not covered, there or here: a connected relay that REFUSES the REQ.
-    // CLOSED auth-required arrives as an ordinary end-of-stream and still
-    // reads as answered.
+    // which the pool also sends for a relay that never connected; then to
+    // trust it whenever a relay was connected, which every one of those
+    // others is. Both were found by measuring in a browser;
+    // relay-reach-answered.test.ts pins the rule against the real library.)
     expect(code).toMatch(/queryAnswered\(discoveryRelays/);
   });
 

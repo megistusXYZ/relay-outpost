@@ -74,21 +74,44 @@ relays on the same machine (2026-11-18), calling the real module:
 | answers with nothing | answered | answered |
 | silent, caller's timer shorter than `maxWait` | not answered | not answered |
 
-The end of the stream is now put to `canReachAny`: `answered` is true only when
-the stream ended **and** one of the relays asked is connected. It costs nothing:
-an open socket resolves at once, and a relay that just refused is not dialed
-twice (the pool remembers it).
+That fix put the end of the stream to `canReachAny`: answered only when the
+stream ended **and** one of the relays asked was connected. It was the right
+answer to the wrong question, and the mistake repeated a second time, one
+layer in. "Connected" is not "answered" either. A relay that declines, one that
+drops the socket and one that stays silent are all connected, and none of them
+has told us anything:
 
-Two things `answered` still does not tell apart. Both were measured, and both
-were left as they were:
+| relay | read as, with the connection check | read as, now |
+|---|---|---|
+| declines the REQ (`CLOSED restricted`) | answered, 0 events | **not answered**, at once |
+| asks for sign-in, refuses ours | answered, 0 events | **not answered** |
+| drops the open socket, WebKit | answered, ~100 ms | **not answered** |
+| drops the open socket, Chromium | not answered, at the caller's timer | not answered |
+| silent, caller waits past `maxWait` | answered, at 10 s | **not answered**, at the caller's timer |
+| silent beside one that answers, short timer | not answered | **answered**, with its events |
+| answers in full, then drops | answered | answered |
 
-- **A connected relay that declines the REQ** (`CLOSED restricted`, or
-  `auth-required` and then a refused sign-in) ends the stream and reads as
-  answered. `withReach` reports this as `refusedReason`; `queryAnswered` does not.
-- **A connected relay that says nothing** gets an end-of-stream from the library
-  at `maxWait` (10 s). A caller that waits longer than that reads it as
-  answered; one that waits less reads it as not answered — including when
-  another relay in the set really did answer.
+The dropped socket is the one that went unseen, because it only shows in one
+engine. The first browser check ran in Chromium. Run in WebKit the next day
+(2026-11-19), the same relay read as answered: see "What the library actually
+does" below for why the two engines part.
+
+**The rule now: `answered` means a relay sent its own end of stream.** Each
+relay is asked in a read of its own, and the two endings are told apart by what
+follows them. When the library ends a stream on a relay's behalf (never
+connected, dial skipped, REQ declined, socket errored), the close arrives in
+the same turn; behind a relay's own EOSE there is none. The library's made-up
+ending for a silent relay is pushed out past the caller's timer, so it never
+arrives. `relay-reach-answered.test.ts` pins that ordering against the library
+itself, because everything rests on it.
+
+When the caller's timer ends the read, `answered` is whatever is true by then:
+one real answer among silent relays is an answer. And once one relay has
+answered, the rest get no longer than the pool's `maxWait`, so a silent relay
+cannot hold a read that already has its answer.
+
+`withReach` still reports a declined sign-in as `refusedReason`, with the
+relay's own words. `queryAnswered` only says nobody answered.
 
 ## Where a wrong answer is worst
 
@@ -159,6 +182,14 @@ Before designing anything for live subscriptions, four facts from
   takes the `reconnect()` branch and calls neither `onclose` nor
   `closeAllSubscriptions`. The most common failure of a long-lived subscription
   is invisible to the failure channel; only the map sees it (`connected === false`).
+  - **That is Chromium. WebKit does the opposite** (measured 2026-11-19 with a
+    raw socket against a relay that hangs up without a close frame). Chromium
+    fires `close 1006` alone. WebKit fires `error` and then `close 1006`, and
+    the library's `ws.onerror` sets `skipReconnection`: it calls `onclose`,
+    closes every subscription on that relay with "relay connection failed",
+    and does **not** reconnect. So on Safari and every iPhone browser the same
+    drop is loud where Chromium's is silent, and a one-shot read sees its
+    stream end at once. A clean close (1000) is the same in both.
 - **`openPersistentSub` can ask nobody at all.** Three branches at
   `nostr.ts:800-812` call `handlers.oneose()` and return a no-op closer — empty
   relay list, invalid filter, or every relay filtered out by health. A pure

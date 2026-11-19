@@ -1242,8 +1242,9 @@ export default function Messages() {
         limit: sinceTs ? 100 : 200,
         ...(sinceTs ? { since: sinceTs } : {}) }, 8000);
       const giftWraps = inbox.events as Event[];
-      // `answered` already means a relay we were connected to ended the stream (lib/relay-reach.ts),
-      // so with every relay down this is false and the empty list says it couldn't reach them.
+      // `answered` already means a relay sent its own end of stream (lib/relay-reach.ts): with every
+      // relay down this is false and the empty list says it couldn't reach them, and one relay still
+      // silent when the timer ends the read no longer makes it false for the ones that answered.
       answered = inbox.answered;
       setInboxAnswered(answered);
 
