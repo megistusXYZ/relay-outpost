@@ -41,7 +41,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.22.0",
-    date: "2026-11-17",
+    date: "2026-11-19",
     title: "A calmer look, plainer words",
     changes: [
       { type: "new", text: "A calmer new look, and a logo with a face: Relay writes its name when you arrive and shows what is really happening." },
