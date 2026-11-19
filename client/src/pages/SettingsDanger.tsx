@@ -168,7 +168,7 @@ function AccountIdentitySection() {
   return (
     <GlassSection testId="section-account-identity" className="border-red-500/30 dark:border-red-500/20">
       <SectionHeader icon={UserX} label="Account" />
-      <p className="text-xs text-foreground/50 dark:text-muted-foreground/60">
+      <p className="text-xs text-foreground">
         Your identity is a keypair, not a row in our database. You can send a
         request for every relay to forget you — this client will then wipe every
         local trace of your account from this device.
@@ -177,12 +177,12 @@ function AccountIdentitySection() {
       <div className="rounded-md border border-red-500/25 dark:border-red-500/20 bg-red-500/[0.04] dark:bg-red-500/[0.06] p-3 space-y-2.5" data-testid="container-danger-zone">
         <div className="flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500/80" />
-          <span className="text-[13px] text-danger dark:text-red-400/80 font-semibold">
+          <span className="text-[13px] text-danger font-semibold">
             Danger zone
           </span>
         </div>
         <p className="text-[13px] text-muted-foreground leading-relaxed">
-          <strong className="text-foreground/80">Vanish from relays</strong> publishes a
+          <strong className="text-foreground">Vanish from relays</strong> publishes a
           NIP-62 request asking every relay you broadcast to to delete all your
           events. Compliant relays will honor it. Non-compliant relays and any
           clients that already cached your posts may still hold copies.
@@ -213,7 +213,7 @@ function AccountIdentitySection() {
               Vanish from relays
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3 text-left text-xs text-foreground/70 dark:text-foreground/60">
+              <div className="space-y-3 text-left text-xs text-foreground">
                 <p>
                   This will publish a NIP-62 <span className="font-mono">kind:62</span> event
                   signed by your key ({npubShort}) asking every relay below to
@@ -227,14 +227,14 @@ function AccountIdentitySection() {
                   <li>This cannot be undone. Back up your key first if there's any chance you'll want it back.</li>
                 </ul>
                 <div>
-                  <p className="text-[13px] text-foreground/80 mb-1 font-medium">
+                  <p className="text-[13px] text-foreground mb-1 font-medium">
                     Target relays ({targetRelays.length})
                   </p>
                   <div className="rounded-md border border-border bg-black/[0.03] dark:bg-white/[0.02] max-h-32 overflow-y-auto p-2" data-testid="list-vanish-relays">
                     {targetRelays.length === 0 ? (
                       <p className="text-[12px] text-muted-foreground">No relays available. Add a relay first.</p>
                     ) : (
-                      <ul className="space-y-0.5 font-mono text-[11px] text-foreground/70">
+                      <ul className="space-y-0.5 font-mono text-xs text-foreground">
                         {targetRelays.map((r) => {
                           const outcome = results?.find((x) => x.relay === r);
                           return (
@@ -250,7 +250,7 @@ function AccountIdentitySection() {
                               )}
                               <span className="truncate">{r}</span>
                               {outcome?.error && (
-                                <span className="text-danger dark:text-red-500/70 text-[11px] truncate">({outcome.error})</span>
+                                <span className="text-danger dark:text-red-500/70 text-xs truncate">({outcome.error})</span>
                               )}
                             </li>
                           );
@@ -270,7 +270,7 @@ function AccountIdentitySection() {
                   />
                   <label
                     htmlFor="vanish-ack"
-                    className="text-[13px] leading-snug text-foreground/80 cursor-pointer select-none"
+                    className="text-[13px] leading-snug text-foreground cursor-pointer select-none"
                   >
                     I understand this cannot be undone. My events will be
                     requested for deletion from every relay above, and my
@@ -281,7 +281,7 @@ function AccountIdentitySection() {
                 <div>
                   <label
                     htmlFor="vanish-confirm"
-                    className={`block text-[13px] font-medium mb-1 ${acknowledged ? "text-foreground/70" : "text-foreground/40"}`}
+                    className={`block text-[13px] font-medium mb-1 ${acknowledged ? "text-foreground" : "text-foreground"}`}
                   >
                     Then type <span className="font-mono font-bold text-danger dark:text-red-400">DELETE</span> to confirm.
                   </label>

@@ -548,7 +548,7 @@ function ZapRevenueSummary({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="space-y-1 p-3 rounded-lg bg-foreground/[0.03] border border-border/60">
             <p className="text-[13px] text-muted-foreground font-medium">Total sats</p>
-            <p className="text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400" data-testid="text-total-sats">
+            <p className="text-lg font-semibold tabular-nums text-warning" data-testid="text-total-sats">
               {formatSats(zapData.totalSats)}
             </p>
           </div>
@@ -594,7 +594,7 @@ function ZapRevenueSummary({
                 <div key={zapper.pubkey} className="flex items-center gap-2 text-xs">
                   <span className="text-muted-foreground w-4 text-right font-mono">{i + 1}</span>
                   <ProfileLink pubkey={zapper.pubkey} className="text-foreground flex-1" />
-                  <span className="font-mono text-amber-600 dark:text-amber-400">{formatSats(zapper.sats)}</span>
+                  <span className="font-mono text-warning">{formatSats(zapper.sats)}</span>
                   <span className="text-muted-foreground">sats</span>
                 </div>
               ))}
@@ -760,7 +760,7 @@ function ContactDetailPanel({
             {website && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <ArrowUpRight className="w-3 h-3 shrink-0" />
-                <a href={website.startsWith("http") ? website : `https://${website}`} target="_blank" rel="noopener noreferrer" className="truncate text-brand/70">
+                <a href={website.startsWith("http") ? website : `https://${website}`} target="_blank" rel="noopener noreferrer" className="truncate text-brand">
                   {website}
                 </a>
               </div>
@@ -1274,7 +1274,7 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
                   className={`px-2 py-0.5 rounded text-[12px] font-medium transition-colors ${
                     feedTierFilter === opt.tier
                       ? "bg-foreground text-background border border-foreground"
-                      : "bg-secondary/50 text-foreground/70 border border-transparent hover:bg-secondary"
+                      : "bg-secondary/50 text-foreground border border-transparent hover:bg-secondary"
                   }`}
                   data-testid={`feed-tier-${opt.tier}`}
                 >
@@ -1322,7 +1322,7 @@ function EventFeed({ events, profileMap }: { events: Event[]; profileMap?: Map<s
                     {threadUrl ? (
                       <Link
                         href={threadUrl}
-                        className="block text-[12px] text-muted-foreground leading-relaxed break-words line-clamp-3 hover:text-foreground/80 transition-colors cursor-pointer"
+                        className="block text-[12px] text-muted-foreground leading-relaxed break-words line-clamp-3 transition-colors cursor-pointer"
                       >
                         {snippet?.text || "View event"}
                         <ExternalLink className="w-2.5 h-2.5 ml-1 inline opacity-0 group-hover:opacity-50 transition-opacity" />
@@ -1411,7 +1411,7 @@ function OnlineUserCard({ pubkey, activity, score }: { pubkey: string; activity:
           </Avatar>
           <TrustTierDot pubkey={pubkey} />
         </div>
-        <span className="text-[12px] text-foreground/90 truncate w-full text-center leading-tight font-medium">{name}</span>
+        <span className="text-[12px] text-foreground truncate w-full text-center leading-tight font-medium">{name}</span>
         <span className="text-[12px] text-muted-foreground tabular-nums leading-none">{formatInfluence(score)}</span>
         <span className={`text-[12px] ${meta.color} flex items-center gap-0.5 leading-none`}>
           <span className="text-[7px]">{meta.icon}</span>
@@ -1514,7 +1514,7 @@ function OnlineWotDialog({ open, onOpenChange, onlineCount }: { open: boolean; o
     moderate: "bg-blue-500/15 border-blue-500/50 dark:border-blue-500/40 text-blue-700 dark:text-blue-300",
     low: "bg-yellow-500/15 border-yellow-500/50 dark:border-yellow-500/40 text-yellow-700 dark:text-yellow-300",
     weak: "bg-orange-500/15 border-orange-500/50 dark:border-orange-500/40 text-orange-700 dark:text-orange-300",
-    none: "bg-muted/30 border-muted-foreground/35 dark:border-muted-foreground/30 text-muted-foreground/80",
+    none: "bg-muted/30 border-muted-foreground/35 dark:border-muted-foreground/30 text-muted-foreground",
   };
 
   return (
@@ -1775,7 +1775,7 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                     </div>
                     <div className="rounded-lg border border-blue-500/20 bg-gradient-to-br from-blue-500/[0.06] to-blue-500/[0.02] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <FileText className="w-3 h-3 text-foreground/70" />
+                        <FileText className="w-3 h-3 text-foreground" />
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                         <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Live posts</p>
                       </div>
@@ -1811,7 +1811,7 @@ function NetworkPulse({ pubkey }: { pubkey?: string }) {
                     </div>
                     <div className="rounded-lg border border-border/60 bg-foreground/[0.03] p-2.5 sm:p-3 space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <FileText className="w-3 h-3 text-foreground/70" />
+                        <FileText className="w-3 h-3 text-foreground" />
                         <p className="text-[12px] sm:text-[13px] text-muted-foreground font-medium">Total posts</p>
                       </div>
                       <p className="text-xl sm:text-2xl font-semibold tabular-nums text-foreground">{formatBigNumber(totalNotes)}</p>
@@ -2530,7 +2530,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                             className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
                               selectedEngagementTypes.includes(opt.kind)
                                 ? "bg-foreground text-background border border-foreground"
-                                : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
+                                : "bg-secondary/50 text-foreground border border-transparent hover:bg-secondary"
                             }`}
                             data-testid={`toggle-engagement-${opt.label.toLowerCase().replace(/\s+/g, "-")}`}
                           >
@@ -2566,7 +2566,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           timePreset === preset.seconds
                             ? "bg-foreground text-background border border-foreground"
-                            : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
+                            : "bg-secondary/50 text-foreground border border-transparent hover:bg-secondary"
                         }`}
                         data-testid={`button-time-${preset.label}`}
                       >
@@ -2614,7 +2614,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                     {GROUPING_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value} data-testid={`option-group-${opt.value}`}>
                         <span className="flex items-center gap-2">
-                          <opt.icon className="w-3.5 h-3.5 text-foreground/70" />
+                          <opt.icon className="w-3.5 h-3.5 text-foreground" />
                           {opt.label}
                         </span>
                       </SelectItem>
@@ -2637,7 +2637,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                         chartType === ct.value
                           ? "bg-foreground text-background border border-foreground"
-                          : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
+                          : "bg-secondary/50 text-foreground border border-transparent hover:bg-secondary"
                       }`}
                       data-testid={`button-chart-${ct.value}`}
                     >
@@ -2723,7 +2723,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                   </Label>
                   <div className="flex items-center gap-2">
                     {!globalWotEnabled && (
-                      <span className="text-[12px] text-amber-600 dark:text-amber-400">Trust filter is off in settings</span>
+                      <span className="text-[12px] text-warning">Trust filter is off in settings</span>
                     )}
                     <Switch
                       checked={wotFilterEnabled}
@@ -2743,7 +2743,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
                             wotMinTier === opt.tier
                               ? "bg-foreground text-background border border-foreground"
-                              : "bg-secondary/50 text-foreground/70 dark:text-foreground/70 border border-transparent hover:bg-secondary"
+                              : "bg-secondary/50 text-foreground border border-transparent hover:bg-secondary"
                           }`}
                           data-testid={`wot-tier-${opt.tier}`}
                         >
@@ -2869,7 +2869,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
           className="flex items-center gap-2 w-full text-left group"
           data-testid="button-toggle-individual-section"
         >
-          <UserCircle className="w-4 h-4 text-foreground/70" />
+          <UserCircle className="w-4 h-4 text-foreground" />
           <h2 className="text-[15px] font-semibold text-foreground">Individual analysis</h2>
           <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[12px] text-muted-foreground font-medium" title="Experimental — these analytics may be incomplete or inaccurate while we refine them.">Experimental</span>
           <div className="flex-1 h-px bg-border/60" />
@@ -2877,7 +2877,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
         </button>
         {urlPubkey && individualOpen && (
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-foreground/[0.05] border border-border/60">
-            <UserCircle className="w-3.5 h-3.5 text-foreground/70 shrink-0" />
+            <UserCircle className="w-3.5 h-3.5 text-foreground shrink-0" />
             <span className="text-xs text-muted-foreground">Analyzing:</span>
             <ProfileLink pubkey={urlPubkey} className="text-xs text-foreground" fallbackClassName="text-xs font-mono text-foreground" />
           </div>
@@ -2889,7 +2889,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-adoption">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Target className="w-4 h-4 text-foreground/70" />
+                      <Target className="w-4 h-4 text-foreground" />
                       <h2 className="text-[15px] font-semibold text-foreground">User adoption funnel</h2>
                     </div>
                     {adoptionOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -3159,7 +3159,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-segmentation">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Layers className="w-4 h-4 text-foreground/70" />
+                      <Layers className="w-4 h-4 text-foreground" />
                       <h2 className="text-[15px] font-semibold text-foreground">User segmentation</h2>
                     </div>
                     {segmentationOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -3270,7 +3270,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between gap-2 p-4 sm:p-6 text-left" data-testid="button-toggle-content-format">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Layers className="w-4 h-4 text-foreground/70" />
+                      <Layers className="w-4 h-4 text-foreground" />
                       <h2 className="text-[15px] font-semibold text-foreground">Content format evolution</h2>
                     </div>
                     {contentFormatOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -3313,7 +3313,7 @@ export default function AnalyticsDashboard({ embedded = false }: { embedded?: bo
               data-testid="button-toggle-saved"
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <Save className="w-4 h-4 text-foreground/70" />
+                <Save className="w-4 h-4 text-foreground" />
                 <h2 className="text-[15px] font-semibold text-foreground">Saved reports</h2>
                 {savedReports.length > 0 && (
                   <Badge variant="secondary">{savedReports.length}</Badge>

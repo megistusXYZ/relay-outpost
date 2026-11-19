@@ -190,7 +190,7 @@ export function ImportKeyFlow({ onBack, onComplete }: Props) {
   const inputCls = "bg-background/50 placeholder:text-muted-foreground/70";
   const primaryBtnCls = "bg-foreground text-background hover:bg-foreground/90";
   const ghostBtnCls = "text-muted-foreground";
-  const eyeBtnCls = "text-foreground/80 hover:text-foreground bg-background/80 hover:bg-background border border-border/60";
+  const eyeBtnCls = "text-foreground hover:text-foreground bg-background/80 hover:bg-background border border-border/60";
 
   const isEncrypted = useMemo(() => keyInput.trim().startsWith("ncryptsec1"), [keyInput]);
 
@@ -517,10 +517,10 @@ export function ImportKeyFlow({ onBack, onComplete }: Props) {
                   <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full transition-all duration-500 bg-brand/60 group-hover/wtf:bg-brand group-hover/wtf:shadow-[0_0_6px_rgba(13,15,18,0.5)]" />
                 </span>
                 <span className="hidden sm:flex flex-col leading-none transform -rotate-[2deg] pr-0.5">
-                  <span className="text-[11px] font-black tracking-tight text-brand dark:text-brand/90">
+                  <span className="text-xs font-black tracking-tight text-brand">
                     Help &amp; guides
                   </span>
-                  <span className="text-[7px] font-bold mt-0.5 text-brand/40">
+                  <span className="text-xs font-medium mt-0.5 text-brand">
                     get started
                   </span>
                 </span>
@@ -529,7 +529,7 @@ export function ImportKeyFlow({ onBack, onComplete }: Props) {
 
             <div className="rounded-md p-3 bg-amber-500/5 border border-amber-500/30">
               <div className="flex items-start gap-2">
-                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-warning" />
                 <p className={`text-xs leading-relaxed ${descCls}`}>
                   This key unlocks your whole account. Pasting it here is fine — or sign in with a browser extension or signer app instead.
                 </p>
@@ -568,7 +568,7 @@ export function ImportKeyFlow({ onBack, onComplete }: Props) {
                 </button>
               </div>
               {pastePreview ? (
-                <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] ${subtleCls}`} data-testid="text-paste-preview">
+                <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs ${subtleCls}`} data-testid="text-paste-preview">
                   <span className="font-mono">
                     {pastePreview.head}{pastePreview.tail ? "…" + pastePreview.tail : ""}
                   </span>
@@ -654,7 +654,7 @@ export function ImportKeyFlow({ onBack, onComplete }: Props) {
 
                 <div className="rounded-md p-3 bg-amber-500/5 border border-amber-500/30">
                   <div className="flex items-start gap-2">
-                    <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                    <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-warning" />
                     <p className={`text-xs leading-relaxed ${descCls}`}>
                       Your key lives in this browser profile. Anyone with access to this device can use this account. Sign out from the menu to remove it.
                     </p>

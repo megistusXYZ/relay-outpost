@@ -248,7 +248,7 @@ function MuteListEditor({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-foreground/70 dark:text-foreground/60">{label}</p>
+        <p className="text-xs font-medium text-foreground">{label}</p>
         <span className="text-[12px] text-muted-foreground tabular-nums">
           {values.length}/{NEWS_MUTE_CAP}
         </span>
@@ -286,13 +286,13 @@ function MuteListEditor({
           {values.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 max-w-full rounded-full border border-border bg-white/[0.03] pl-2.5 pr-1 py-0.5 text-[12px] text-foreground/80"
+              className="inline-flex items-center gap-1 max-w-full rounded-full border border-border bg-white/[0.03] pl-2.5 pr-1 py-0.5 text-[12px] text-foreground"
             >
               <span className="truncate max-w-[220px]">{v}</span>
               <button
                 type="button"
                 onClick={() => onChange(values.filter((x) => x !== v))}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-destructive hover:bg-muted/50 transition-colors"
+                className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-muted/50 transition-colors"
                 aria-label={`Remove ${v}`}
                 data-testid={`button-remove-${testIdBase}-${v}`}
               >
@@ -413,7 +413,7 @@ function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; a
             data-section={i.id}
             onClick={() => onSelect(i.id)}
             data-testid={`settings-nav-mobile-${i.id}`}
-            className={`-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${active === i.id ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${active === i.id ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
           >
             {i.label}
           </button>
@@ -429,7 +429,7 @@ function SettingsNav({ items, active, onSelect }: { items: SettingsCategory[]; a
                 onClick={() => onSelect(i.id)}
                 aria-current={active === i.id ? "page" : undefined}
                 data-testid={`settings-nav-${i.id}`}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${active === i.id ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"}`}
+                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${active === i.id ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:bg-foreground/[0.04]"}`}
               >
                 {i.label}
               </button>
@@ -571,7 +571,7 @@ function LaunchSection() {
               return (
                 <SelectItem key={opt.value} value={opt.value} data-testid={`button-launch-${testIdSuffix}`}>
                   <span className="flex items-center gap-2">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                     {opt.label}
                   </span>
                 </SelectItem>
@@ -699,7 +699,7 @@ function DMRelaysExpandRow() {
       {loadingDm ? (
         <div className="flex items-center gap-2 py-2">
           <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-foreground/60" />
-          <span className="text-xs text-muted-foreground/60">Loading DM relay list...</span>
+          <span className="text-xs text-muted-foreground">Loading DM relay list...</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -728,7 +728,7 @@ function DMRelaysExpandRow() {
 
           {dmRelays.length === 0 ? (
             <div className="space-y-2">
-              <p className="text-xs text-foreground/65 dark:text-muted-foreground/70" data-testid="text-no-dm-relays">
+              <p className="text-xs text-foreground" data-testid="text-no-dm-relays">
                 No DM relays configured yet. Use the recommended set or add your own.
               </p>
               <Button
@@ -755,7 +755,7 @@ function DMRelaysExpandRow() {
                   data-testid={`dm-relay-${url}`}
                 >
                   <Radio className="w-3 h-3 text-foreground/60 shrink-0" />
-                  <span className="flex-1 text-xs font-mono text-foreground/70 dark:text-muted-foreground/80 truncate">
+                  <span className="flex-1 text-xs font-mono text-foreground truncate">
                     {url}
                   </span>
                   <button
@@ -877,7 +877,7 @@ function FontPanel({ font, onFontChange, currentFont }: {
             role="tab"
             aria-selected={activeCategory === cat.key}
             onClick={() => setActiveCategory(cat.key)}
-            className={`flex-1 py-2 text-[13px] font-medium transition-colors ${FOCUS_RING} ${ activeCategory === cat.key ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground/60 hover:text-muted-foreground/85 hover:bg-accent" }`}
+            className={`flex-1 py-2 text-[13px] font-medium transition-colors ${FOCUS_RING} ${ activeCategory === cat.key ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-muted-foreground/85 hover:bg-accent" }`}
           >
             {cat.label}
           </button>
@@ -897,9 +897,9 @@ function FontPanel({ font, onFontChange, currentFont }: {
             }`}
             data-testid={`button-font-${opt.value}`}
           >
-            <span className="w-10 text-center text-xl text-foreground/80 shrink-0" style={{ fontFamily: opt.family, fontWeight: 400 }}>Aa</span>
+            <span className="w-10 text-center text-xl text-foreground shrink-0" style={{ fontFamily: opt.family, fontWeight: 400 }}>Aa</span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground/80 truncate" style={{ fontFamily: opt.family }}>{opt.label}</p>
+              <p className="text-xs font-medium text-foreground truncate" style={{ fontFamily: opt.family }}>{opt.label}</p>
               <p className="text-[12px] text-muted-foreground truncate">{opt.desc}</p>
             </div>
             {font === opt.value && <Check className="w-3.5 h-3.5 text-foreground shrink-0" />}
@@ -1133,7 +1133,7 @@ function SchedulerExpandRow() {
       testId="section-custom-scheduler"
     >
       <div className="space-y-2">
-        <p className="text-xs text-foreground/50 dark:text-muted-foreground/60">
+        <p className="text-xs text-foreground">
           Send <em>server</em>-scheduled posts to a Relay Outpost backend you run yourself instead of
           this one. Leave blank to use the default. Your server must list this site in its
           <code className="mx-1">ALLOWED_ORIGINS</code>. Does not affect "This device" scheduling.
@@ -1151,7 +1151,7 @@ function SchedulerExpandRow() {
           </Button>
         </div>
         {saved && (
-          <p className="text-[12px] text-success dark:text-emerald-400/70">Active: {saved}</p>
+          <p className="text-[12px] text-success">Active: {saved}</p>
         )}
       </div>
     </ExpandRow>
@@ -1206,9 +1206,9 @@ function InstallAppRow() {
             </DialogDescription>
           </DialogHeader>
           {steps && pwa.installMethod === "in-app-browser" ? (
-            <InAppBrowserEscape guide={steps} className="text-foreground/85" />
+            <InAppBrowserEscape guide={steps} className="text-foreground" />
           ) : steps ? (
-            <InstallSteps guide={steps} className="text-foreground/85" />
+            <InstallSteps guide={steps} className="text-foreground" />
           ) : null}
           {(() => {
             const note = pubkey ? appHandoffNote({ ios: pwa.installMethod === "ios-instructions", loginMethod }) : null;
@@ -1271,7 +1271,7 @@ function AppSection() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground/60 hover:text-foreground"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={copyVersion}
           aria-label="Copy version"
           data-testid="button-copy-version"
@@ -1309,7 +1309,7 @@ function AppSection() {
         <DialogContent className="max-w-sm" data-testid="dialog-repair-app">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <LifeBuoy className="w-4 h-4 text-foreground/70" />
+              <LifeBuoy className="w-4 h-4 text-foreground" />
               Repair app
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -1573,14 +1573,14 @@ function EngagementWeightsEditor() {
   return (
     <div className="space-y-2.5" data-testid="section-engagement-weights">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-foreground/70 dark:text-foreground/60 flex items-center gap-1.5">
+        <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
           <BarChart3 className="w-3 h-3 text-foreground/60" />
           Ranking weights
         </p>
         {!isDefault && (
           <button
             onClick={resetToDefaults}
-            className="text-[12px] text-muted-foreground hover:text-muted-foreground/90 flex items-center gap-1 transition-colors"
+            className="text-[12px] text-muted-foreground flex items-center gap-1 transition-colors"
             data-testid="button-reset-engagement-weights"
           >
             <RotateCcw className="w-3 h-3" />
@@ -1601,20 +1601,20 @@ function EngagementWeightsEditor() {
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm leading-none shrink-0">{icon}</span>
-              <span className="text-[13px] text-foreground/80 font-medium truncate">{label}</span>
+              <span className="text-[13px] text-foreground font-medium truncate">{label}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => updateWeight(key, -1)}
                 disabled={weights[key] <= 0}
-                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
+                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
                 aria-label={`Decrease ${label} weight`}
                 data-testid={`button-weight-minus-${key}`}
               >
                 −
               </button>
               <span
-                className={`w-8 text-center font-mono text-xs sm:text-sm font-bold ${ weights[key] === 0 ? "text-muted-foreground/30" : weights[key] >= 5 ? "text-foreground" : "text-foreground/70" }`}
+                className={`w-8 text-center font-mono text-xs sm:text-sm font-bold ${ weights[key] === 0 ? "text-muted-foreground" : weights[key] >= 5 ? "text-foreground" : "text-foreground" }`}
                 data-testid={`text-weight-value-${key}`}
               >
                 x{weights[key]}
@@ -1622,7 +1622,7 @@ function EngagementWeightsEditor() {
               <button
                 onClick={() => updateWeight(key, 1)}
                 disabled={weights[key] >= 10}
-                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground/50 hover:text-foreground/80 hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
+                className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer text-sm font-medium"
                 aria-label={`Increase ${label} weight`}
                 data-testid={`button-weight-plus-${key}`}
               >
@@ -1636,7 +1636,7 @@ function EngagementWeightsEditor() {
       <div className="rounded-[14px] p-3 space-y-2"
         style={{ background: "hsl(var(--foreground) / 0.04)", border: "1px solid hsl(var(--border) / 0.6)" }}
       >
-        <p className="text-[13px] font-medium text-foreground/80">
+        <p className="text-[13px] font-medium text-foreground">
           How it works
         </p>
         <ul className="text-[13px] text-muted-foreground space-y-1 list-disc list-inside">
@@ -1923,7 +1923,7 @@ function MediaServersExpandRow() {
       {loading ? (
         <div className="flex items-center gap-2 py-2">
           <RelayOutpostInlineLoader className="w-3.5 h-3.5 text-foreground/60" />
-          <span className="text-xs text-muted-foreground/60">Fetching server list...</span>
+          <span className="text-xs text-muted-foreground">Fetching server list...</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1955,7 +1955,7 @@ function MediaServersExpandRow() {
 
           {servers.length === 0 ? (
             <div className="space-y-2">
-              <p className="text-xs text-foreground/65 dark:text-muted-foreground/70" data-testid="text-no-blossom-servers">
+              <p className="text-xs text-foreground" data-testid="text-no-blossom-servers">
                 No media servers configured yet. Use the recommended set or add your own.
               </p>
               <Button
@@ -1981,8 +1981,8 @@ function MediaServersExpandRow() {
                   style={{ border: "1px solid hsl(var(--border) / 0.6)" }}
                   data-testid={`blossom-server-${server.replace(/[^a-z0-9]/gi, "-")}`}
                 >
-                  <HardDrive className="w-3.5 h-3.5 text-foreground/60 shrink-0" />
-                  <span className="flex-1 min-w-0 text-xs font-mono text-foreground/80 truncate">
+                  <HardDrive className="w-3.5 h-3.5 text-foreground shrink-0" />
+                  <span className="flex-1 min-w-0 text-xs font-mono text-foreground truncate">
                     {server}
                   </span>
                   <Button
@@ -2109,7 +2109,7 @@ function MatrixBrandBlock() {
       onMouseLeave={handleLeave}
     >
       <RelayOutpostIcon className={`w-5 h-5 shrink-0 transition-all duration-500 ${isMatrix ? "text-brand" : "text-foreground/70"}`} />
-      <p className={`text-[13px] font-medium transition-all duration-300 whitespace-nowrap ${isMatrix ? "font-mono text-brand" : "text-foreground/70"}`}>
+      <p className={`text-[13px] font-medium transition-all duration-300 whitespace-nowrap ${isMatrix ? "font-mono text-brand" : "text-foreground"}`}>
         {displayText}
         {versionText && (
           <span className="text-[12px] text-muted-foreground font-normal tabular-nums ml-1" data-testid="text-about-version">{versionText}</span>
@@ -2216,7 +2216,7 @@ function TranslationRow() {
             <button
               key={lang}
               onClick={() => removeLang(lang)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border/50 text-[12px] text-foreground/80 hover:border-destructive/40 hover:text-destructive"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border/50 text-[12px] text-foreground hover:border-destructive/40 hover:text-destructive"
               title={`Stop auto-translating ${languageName(lang)}`}
               data-testid={`button-remove-auto-lang-${lang}`}
             >
@@ -2256,7 +2256,7 @@ function FeedbackTicketsRow() {
         <span className="inline-flex items-center gap-2">
           Your tickets
           {unread > 0 && (
-            <span className="text-[10px] font-medium rounded-full px-1.5 py-0.5 bg-primary text-primary-foreground" data-testid="badge-tickets-unread">{unread}</span>
+            <span className="text-xs font-medium rounded-full px-1.5 py-0.5 bg-primary text-primary-foreground" data-testid="badge-tickets-unread">{unread}</span>
           )}
         </span>
       }

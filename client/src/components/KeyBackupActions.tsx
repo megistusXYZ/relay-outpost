@@ -163,7 +163,7 @@ export function KeyBackupActions({ material, relays, onSaved, testIdPrefix = "ke
             <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-8 text-[12px] font-bold" data-testid={`${testIdPrefix}-check-open`}>
               <FileText className="w-3.5 h-3.5 mr-1.5" /> Open the file
             </Button>
-            <span className={`text-[11px] ${quiet}`}>or paste the key:</span>
+            <span className={`text-xs ${quiet}`}>or paste the key:</span>
             <input
               type="password"
               value={pasted}
