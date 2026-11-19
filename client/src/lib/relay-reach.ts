@@ -148,10 +148,30 @@ export async function canReachAny(relayUrls: string[]): Promise<boolean> {
  * kind-10073); it kept happening because "did anyone answer?" was not a thing a
  * caller could ask.
  *
- * `answered` is true only if a relay sent a real EOSE. Our own timer firing is
- * NOT an answer — and note that the pool now supplies `maxWait`
- * (DEFAULT_READ_MAX_WAIT_MS), so nostr-tools cannot fabricate an EOSE before
- * then; a caller timeout longer than that is what makes this distinction real.
+ * `answered` is true only when the stream ended AND one of these relays is one
+ * we are connected to. The end of the stream alone proves nothing: the pool
+ * fires `oneose` for a relay that never connected, and for one whose dial was
+ * skipped because it refused moments ago. This function trusted it anyway, so
+ * a set with every relay down "ended" in a millisecond with zero events and
+ * read as a confirmed absence. Measured in a browser (2026-11-18): a refused
+ * connection, and one dropped before the handshake, both came back answered
+ * while `canReachRelay` said false for the same relay.
+ *
+ * So the end of the stream is put to `canReachAny`. It resolves at once for an
+ * open socket, and a relay that just refused is not dialed a second time (the
+ * pool remembers it), so the check costs nothing either way.
+ *
+ * Our own timer firing is NOT an answer, and it still wins if the connection
+ * check has not come back by then.
+ *
+ * What `answered` does not tell apart, both measured the same day and both
+ * left as they were:
+ *  - a relay we connected to that turned the REQ down (CLOSED) still ends the
+ *    stream, and reads as answered;
+ *  - a connected relay that says nothing gets an end-of-stream from the
+ *    library at the pool's `maxWait` (DEFAULT_READ_MAX_WAIT_MS), so it reads
+ *    as answered to a caller whose timeout is longer than that, and as
+ *    unanswered to one whose timeout is shorter.
  *
  * Events that DID arrive are always returned, answered or not: a relay that
  * sent three entries and then went quiet still told us about three entries.
@@ -176,9 +196,10 @@ export async function queryAnswered(
     };
     sub = pool.subscribeMany(relayUrls, filter, {
       onevent(e: NostrEvent) { if (!settled) events.push(e); },
-      oneose() { settle(true); },
+      // The stream ended. Whether anyone was there to end it is a separate
+      // question, and connecting is the only thing that answers it.
+      oneose() { canReachAny(relayUrls).then(settle); },
     });
-    if (settled) sub.close();
     timer = setTimeout(() => settle(false), timeoutMs);
   });
 }

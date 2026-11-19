@@ -19,10 +19,10 @@ export const COMMUNITY_LIST_SYNCED_EVENT = "concord-community-list-synced";
 /**
  * Your relays as the sync sees them. A relay counts as having answered only
  * once it CONNECTED: nostr-tools fires an EOSE for a relay that failed to
- * connect, so queryAnswered alone reports a dead relay as an answer (seen on
- * the wire: a port nothing listened on came back "answered"). Only reachable
- * relays are asked, and only when every one of them answered may the sync
- * conclude that you have no List yet.
+ * connect. queryAnswered checks that for the set as a whole (answered if ANY
+ * relay asked is connected); the sync needs it per relay, because only when
+ * EVERY one of your relays answered may it conclude that you have no List
+ * yet. So each relay is proved reachable first and only those are asked.
  */
 export function listRelaysAt(urls: string[]): ListRelays {
   return {
