@@ -1,10 +1,10 @@
 /**
- * The relays the app opens at launch are the relay ring on the splash
- * (client/index.html). A dot lights only for a relay whose socket really
- * opened: ensureRelay resolving is the signal, never EOSE, which nostr-tools
- * fires for a relay that failed to connect (RELAY_REACHABILITY.md).
+ * The relays the app opens at launch: each is reported as connected only when
+ * its socket really opened. ensureRelay resolving is the signal, never EOSE,
+ * which nostr-tools fires for a relay that failed to connect
+ * (RELAY_REACHABILITY.md).
  */
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { openLaunchRelays } from "./launch-relays";
 
 const UP = "wss://up.example";
@@ -12,38 +12,44 @@ const DOWN = "wss://down.example";
 const ensure = (url: string) => (url === DOWN ? Promise.reject(new Error("refused")) : Promise.resolve({}));
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-afterEach(() => { delete (globalThis as any).__roSplashRelay; });
-
 describe("openLaunchRelays", () => {
-  it("tells the splash about every relay it opens, and lights only the ones that connect", async () => {
-    const seen: string[] = [];
-    (globalThis as any).__roSplashRelay = (url: string, state: string) => seen.push(`${state} ${url}`);
-    openLaunchRelays([UP, DOWN], ensure);
-    expect(seen).toEqual([`open ${UP}`, `open ${DOWN}`]);
-    await flush();
-    expect(seen).toEqual([`open ${UP}`, `open ${DOWN}`, `up ${UP}`]);
+  it("asks for every relay it is given, once each", () => {
+    const asked: string[] = [];
+    openLaunchRelays([UP, DOWN], (url) => { asked.push(url); return ensure(url).catch(() => {}); });
+    expect(asked).toEqual([UP, DOWN]);
   });
 
   it("reports each outcome to the caller: connected with its time, or failed", async () => {
     const connected = vi.fn(), failed = vi.fn();
     openLaunchRelays([UP, DOWN], ensure, { connected, failed });
     await flush();
+    expect(connected).toHaveBeenCalledTimes(1);
     expect(connected).toHaveBeenCalledWith(UP, expect.any(Number));
+    expect(failed).toHaveBeenCalledTimes(1);
     expect(failed).toHaveBeenCalledWith(DOWN);
   });
 
-  it("works with no splash on the page (it's gone, or never was)", async () => {
+  it("a relay that fails is never reported as connected", async () => {
     const connected = vi.fn();
-    expect(() => openLaunchRelays([UP], ensure, { connected })).not.toThrow();
+    openLaunchRelays([DOWN], ensure, { connected });
     await flush();
-    expect(connected).toHaveBeenCalledOnce();
+    expect(connected).not.toHaveBeenCalled();
   });
 
-  it("a splash hook that throws never stops a relay from opening", async () => {
-    (globalThis as any).__roSplashRelay = () => { throw new Error("splash broke"); };
-    const connected = vi.fn();
-    openLaunchRelays([UP], ensure, { connected });
+  it("works with nobody listening", async () => {
+    expect(() => openLaunchRelays([UP, DOWN], ensure)).not.toThrow();
     await flush();
-    expect(connected).toHaveBeenCalledOnce();
+  });
+
+  it("draws nothing on the launch screen: there is no relay ring to tell", async () => {
+    const hook = vi.fn();
+    (globalThis as { __roSplashRelay?: unknown }).__roSplashRelay = hook;
+    try {
+      openLaunchRelays([UP], ensure);
+      await flush();
+      expect(hook).not.toHaveBeenCalled();
+    } finally {
+      delete (globalThis as { __roSplashRelay?: unknown }).__roSplashRelay;
+    }
   });
 });

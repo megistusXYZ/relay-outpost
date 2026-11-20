@@ -449,7 +449,6 @@ export function warmRelayConnections() {
   const priority = allRelays.filter((u) => fastSet.has(u));
   const deferred = allRelays.filter((u) => !fastSet.has(u));
 
-  // Also lights the splash's relay ring, one dot per real connect.
   function connectBatch(urls: string[]) {
     openLaunchRelays(urls, (url) => pool.ensureRelay(url), {
       connected: (url, elapsed) => {
