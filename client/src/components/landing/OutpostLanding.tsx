@@ -22,6 +22,7 @@ import { loadSignupDraft } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { RelayLogo } from "@/components/relay/RelayLogo";
 import { useLandingLogo, useNoRoomForName } from "./landing-logo";
+import { RelayMeet } from "./RelayMeet";
 import "./outpost-landing.css";
 
 const HEADLINE = "The next phase of the internet";
@@ -547,10 +548,7 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
                 </div>
               </li>
             </ul>
-            <p className="rv" style={{ margin: 0, display: "flex", alignItems: "center", gap: 12, color: "var(--ink2)" }}>
-              <svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true" style={{ flex: "none" }}><path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" style={{ fill: "none", stroke: "currentColor", strokeWidth: 9, strokeLinecap: "round" }} /><circle cx="71.2" cy="28.8" r="6.5" style={{ fill: "var(--accent)" }} /><ellipse cx="42" cy="51" rx="3.6" ry="5.2" style={INK} /><ellipse cx="58" cy="51" rx="3.6" ry="5.2" style={INK} /></svg>
-              <span>And Relay, an assistant that works only for you, arrives in 2027.</span>
-            </p>
+            <RelayMeet still={reducedMotion() || choseLite()} />
           </div>
         </div>
       </section>

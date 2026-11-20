@@ -192,6 +192,22 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 .outpost-landing .lg-in { position: relative; --lg-x: clamp(16px, 5vw, 24px); }
 /* On this page the logo is drawn in the page's own ink and accent, not the app's. */
 .outpost-landing .rl { --ink: inherit; --ember: var(--accent); }
+
+/* Meet Relay: a fourth row under the three above it, in the same two columns. Its heading is the
+   logo, reading "Relay"; beside it one sentence and three small buttons that make it move. */
+.outpost-landing .meet { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px 72px; align-items: center; padding-top: clamp(0px, 1.2vw, 12px); }
+.outpost-landing .meet-head { margin: 0; display: flex; align-items: center; min-height: 1.5em; font-size: clamp(28px, 3.4vw, 42px); color: var(--ink); }
+.outpost-landing .meet-head .rl { font-size: inherit; --rl-muted: var(--ink2); }
+.outpost-landing .meet-body { display: flex; flex-direction: column; gap: 14px; }
+.outpost-landing .meet-lead { margin: 0; font-size: 19px; color: var(--ink2); text-wrap: pretty; }
+.outpost-landing .meet-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 8px; }
+.outpost-landing .meet-note { margin-right: 6px; font-size: 15px; font-weight: 500; color: var(--ink); }
+/* A 36px pill with a 44px place to press (4 to 5px past the pill, by engine). Rows of pills sit 10px apart, so those places never overlap. */
+.outpost-landing .meet-btn { position: relative; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; color: var(--ink2); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+.outpost-landing .meet-btn::after { content: ""; position: absolute; inset: -5px -1px; border-radius: inherit; }
+@media (hover: hover) { .outpost-landing .meet-btn:hover { color: var(--ink); border-color: var(--ink); } }
+.outpost-landing .meet-btn[aria-pressed="true"] { background: var(--btn); color: var(--btnink); border-color: transparent; }
+@media (prefers-reduced-motion: reduce) { .outpost-landing .meet-btn { transition: none; } }
 .outpost-landing .ol-header { --lg-top: 46vh; --lg-k: 4.4; }
 @supports (height: 1svh) { .outpost-landing .ol-header { --lg-top: 46svh; } }
 @media (max-width: 899px) { .outpost-landing .ol-header { --lg-k: 3.1; } }
