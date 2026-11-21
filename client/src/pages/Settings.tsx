@@ -491,7 +491,7 @@ function LaunchSection() {
     return "/";
   });
 
-  // The chart Trending opens on, read the way Home reads it (an old saved
+  // The window Trending opens on, read the way Home reads it (an old saved
   // chart shows as the closest one that exists now; nothing saved is
   // Overall · last hour).
   const [scanFilter, setScanFilter] = useState(() => {
@@ -587,10 +587,10 @@ function LaunchSection() {
       <PrivateModeRow />
 
       {activeKey === "deep_scan" && (
-        <Row icon={Clock} label="Trending opens on" sub="The chart the Trending feed shows first">
+        <Row icon={Clock} label="Trending opens on" sub="How far back Trending looks when it opens">
           <Select value={scanFilter} onValueChange={handleScanFilterChange}>
             <SelectTrigger className={SELECT_TRIGGER_CLS} data-testid="select-default-filter">
-              <SelectValue placeholder="Overall · last hour" />
+              <SelectValue placeholder="Last hour" />
             </SelectTrigger>
             <SelectContent align="end">
               {TRENDING_CHART_CHOICES.map((opt) => (

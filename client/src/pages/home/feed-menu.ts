@@ -18,7 +18,6 @@
  * options a feed has — pure, so it is one table (feed-menu.test.ts). The
  * components only draw it.
  */
-import type { ArchivesRange } from "./helpers";
 
 export type FeedTabKey = "foryou" | "following" | "trending" | "feeds";
 export type FeedStyle = "all" | "photos" | "video" | "polls";
@@ -93,7 +92,6 @@ export type FilterGroup =
   | "order"        // Popular / Latest
   | "show"         // Posts / Replies / Both
   | "strictness"   // Open / Balanced / Strict
-  | "top-by"       // Trending: Overall / Likes / Zaps / Replies / Reposts
   | "from"         // Trending: how far back
   | "media-order"  // Photos, Videos: Trending / Latest
   | "poll-order"   // Polls: Trending / Latest / Ending soon
@@ -113,7 +111,7 @@ export function filterGroups(env: {
   const tab = tabForFeedMode(env.feedMode);
   if (tab === "foryou") return env.strictness ? ["order", "show", "strictness"] : ["order", "show"];
   if (tab === "following") return ["order", "show"];
-  if (tab === "trending") return ["top-by", "from"];
+  if (tab === "trending") return ["from"];
   if (env.feedMode === "custom_all") {
     if (env.feedStyle === "polls") return ["poll-order", "poll-show"];
     return ["media-order"];
@@ -122,64 +120,44 @@ export function filterGroups(env: {
 }
 
 /* ----------------------------------------------------------------------------
- * Trending: "Top by" and "From"
+ * Trending: "From"
  *
- * Underneath there are two sources. "Overall" is a blended ranking that only
- * exists for the last hour or four hours; the four counts (likes, zaps,
- * replies, reposts) are charts that exist from today back to all time. The old
- * menu laid all seven time ranges in one row, so picking "1 hour" silently
- * dropped the metric and picking a metric silently changed the range. Here
- * each choice of "Top by" shows the ranges it really has.
+ * Trending has one ranking, a blended one that exists for the last hour or the
+ * last four. It used to have four count charts beside it (likes, thanks,
+ * replies, reposts, from today back to all time), under a "Top by" row; their
+ * outside source closed on 2026-11-21 and they went with it.
  * ------------------------------------------------------------------------- */
 
-export type TopBy = "overall" | "arc_reactions" | "arc_zaps" | "arc_replies" | "arc_reposts";
-export type TrendingFrom = "1h" | "4h" | ArchivesRange;
-
-export const TOP_BY_OPTIONS: ReadonlyArray<{ value: TopBy; label: string }> = [
-  { value: "overall", label: "Overall" },
-  { value: "arc_reactions", label: "Likes" },
-  { value: "arc_zaps", label: "Thanks" },
-  { value: "arc_replies", label: "Replies" },
-  { value: "arc_reposts", label: "Reposts" },
-];
+export type TrendingFrom = "1h" | "4h";
 
 const OVERALL_FROM: ReadonlyArray<{ value: TrendingFrom; label: string }> = [
   { value: "1h", label: "Last hour" },
   { value: "4h", label: "Last 4 hours" },
-];
-const CHART_FROM: ReadonlyArray<{ value: TrendingFrom; label: string }> = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "Week" },
-  { value: "30d", label: "Month" },
-  { value: "1y", label: "Year" },
-  { value: "all", label: "All time" },
 ];
 
 /** Where Trending opens when nobody chose (owner, 2026-10-03): Overall, last hour. */
 export const DEFAULT_TRENDING_SELECTOR = "trending_1h";
 
 /** A stored selector that no longer has a home on Trending (its own Polls
- *  list: polls live under Feeds now) falls back to the default chart. */
+ *  list, which lives under Feeds now; the four count charts, whose outside
+ *  source closed on 2026-11-21) falls back to the default. */
 export function trendingSelectorOrDefault(selector: string): string {
   if (selector === "trending_1h" || selector === "trending_4h") return selector;
-  if (TOP_BY_OPTIONS.some((o) => o.value === selector && o.value !== "overall")) return selector;
   return DEFAULT_TRENDING_SELECTOR;
 }
 
 /**
- * Charts saved before Trending's menu changed, read as the closest chart that
- * exists now. "Rising", "Hot" and "Top Signal" were engagement rankings;
- * "Most zapped" is the Thanks chart; 12 and 24 hours are nearest to 4 hours.
+ * Windows saved before Trending's menu changed, read as the closest that
+ * exists now: 12 and 24 hours are nearest to 4 hours. Anything else that is
+ * gone opens the default.
  */
 export function migrateTrendingChart(v: string | null | undefined): string | null {
   if (!v) return null;
-  if (v === "mostzapped_24h" || v === "mostzapped_yesterday" || v === "mostzapped_week" || v === "mostzapped_4h") return "arc_zaps";
-  if (v === "hot" || v === "rising" || v === "weekly_top") return "arc_reactions";
   if (v === "trending_12h" || v === "trending_24h") return "trending_4h";
   return v;
 }
 
-/** The chart Trending opens on: this session's own pick, else the saved setting, else Overall · last hour. */
+/** The window Trending opens on: this session's own pick, else the saved setting, else the last hour. */
 export function startingTrendingSelector(session: string | null | undefined, saved: string | null | undefined): string {
   const s = migrateTrendingChart(session);
   if (s) return trendingSelectorOrDefault(s);
@@ -188,37 +166,20 @@ export function startingTrendingSelector(session: string | null | undefined, sav
   return DEFAULT_TRENDING_SELECTOR;
 }
 
-/** What Settings offers for "Trending opens on": exactly Trending's charts. */
+/** What Settings offers for "Trending opens on": exactly Trending's windows. */
 export const TRENDING_CHART_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "trending_1h", label: "Overall · last hour" },
-  { value: "trending_4h", label: "Overall · last 4 hours" },
-  { value: "arc_reactions", label: "Most liked" },
-  { value: "arc_zaps", label: "Most thanked" },
-  { value: "arc_replies", label: "Most replied" },
-  { value: "arc_reposts", label: "Most reposted" },
+  { value: "trending_1h", label: "Last hour" },
+  { value: "trending_4h", label: "Last 4 hours" },
 ];
 
-export function trendingFilter(selector: string, range: ArchivesRange): {
-  topBy: TopBy;
+export function trendingFilter(selector: string): {
   from: TrendingFrom;
   fromOptions: ReadonlyArray<{ value: TrendingFrom; label: string }>;
 } {
-  const sel = trendingSelectorOrDefault(selector);
-  if (sel === "trending_1h") return { topBy: "overall", from: "1h", fromOptions: OVERALL_FROM };
-  if (sel === "trending_4h") return { topBy: "overall", from: "4h", fromOptions: OVERALL_FROM };
-  return { topBy: sel as TopBy, from: range, fromOptions: CHART_FROM };
-}
-
-/** What a pick in "Top by" sets. The range is kept: a chart has every range. */
-export function pickTopBy(topBy: TopBy, current: string): { selector: string } {
-  if (topBy !== "overall") return { selector: topBy };
-  // Overall keeps the window it was on, and starts on the longer one.
-  return { selector: current === "trending_1h" ? "trending_1h" : "trending_4h" };
+  return { from: trendingSelectorOrDefault(selector) === "trending_4h" ? "4h" : "1h", fromOptions: OVERALL_FROM };
 }
 
 /** What a pick in "From" sets. */
-export function pickFrom(from: TrendingFrom): { selector?: string; range?: ArchivesRange } {
-  if (from === "1h") return { selector: "trending_1h" };
-  if (from === "4h") return { selector: "trending_4h" };
-  return { range: from };
+export function pickFrom(from: TrendingFrom): { selector: string } {
+  return { selector: from === "4h" ? "trending_4h" : "trending_1h" };
 }

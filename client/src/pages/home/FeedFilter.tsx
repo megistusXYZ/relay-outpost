@@ -3,12 +3,12 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DesktopOptionsPopover } from "@/components/DesktopOptionsPopover";
 import { Segment } from "@/components/Segment";
-import { ArrowRight, Globe } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   FEED_SORT_OPTIONS, TOP_TIME_WINDOWS, SAVED_POLL_SORTS, SAVED_POLL_SHOW_OPTIONS,
-  type FeedSortMode, type TopTimeWindow, type SavedPollSort, type SavedPollShow, type ArchivesRange,
+  type FeedSortMode, type TopTimeWindow, type SavedPollSort, type SavedPollShow,
 } from "./helpers";
-import { TOP_BY_OPTIONS, trendingFilter, type FilterGroup, type TopBy, type TrendingFrom } from "./feed-menu";
+import { trendingFilter, type FilterGroup, type TrendingFrom } from "./feed-menu";
 
 export type FeedOrderValue = "popular" | "latest";
 export type ContentFilterValue = "posts" | "replies" | "all";
@@ -31,7 +31,7 @@ export function FeedFilter({
   order, onOrder,
   contentFilter, onContentFilter,
   activePreset, onPreset, onAdvanced,
-  trendingSelector, archivesRange, onTopBy, onFrom,
+  trendingSelector, onFrom,
   mediaSort, onMediaSort,
   pollSort, onPollSort, pollShow, onPollShow,
   feedSortMode, onFeedSort, topTimeWindow, onTimeWindow, feedStyle, onFeedStyle,
@@ -50,8 +50,6 @@ export function FeedFilter({
   onPreset: (p: PresetValue) => void;
   onAdvanced: () => void;
   trendingSelector: string;
-  archivesRange: ArchivesRange;
-  onTopBy: (v: TopBy) => void;
   onFrom: (v: TrendingFrom) => void;
   mediaSort: MediaSortValue;
   onMediaSort: (v: MediaSortValue) => void;
@@ -67,7 +65,7 @@ export function FeedFilter({
   onFeedStyle: (v: "all" | "photos" | "video") => void;
 }) {
   const isMobile = useIsMobile();
-  const trending = trendingFilter(trendingSelector, archivesRange);
+  const trending = trendingFilter(trendingSelector);
 
   const group: Record<FilterGroup, () => ReactNode> = {
     order: () => (
@@ -95,24 +93,8 @@ export function FeedFilter({
         </button>
       </div>
     ),
-    "top-by": () => (
-      <Segment label="Top by" options={TOP_BY_OPTIONS} value={trending.topBy} onChange={onTopBy} testPrefix="feed-filter-top-by" />
-    ),
     from: () => (
-      <div>
-        <Segment label="From" cols={trending.fromOptions.length === 2 ? 2 : 3} options={trending.fromOptions} value={trending.from} onChange={onFrom} testPrefix="feed-filter-from" />
-        {trending.topBy !== "overall" && (
-          <a
-            href="https://nostrarchives.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="link-archives-attribution"
-          >
-            <Globe className="w-3 h-3" /> Charts by Archives
-          </a>
-        )}
-      </div>
+      <Segment label="From" cols={2} options={trending.fromOptions} value={trending.from} onChange={onFrom} testPrefix="feed-filter-from" />
     ),
     "media-order": () => (
       <Segment label="Order" cols={2} options={[{ value: "trending", label: "Trending" }, { value: "latest", label: "Latest" }]} value={mediaSort} onChange={onMediaSort} testPrefix="feed-filter-media-order" />

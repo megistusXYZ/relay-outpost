@@ -8,7 +8,7 @@ import { reachAdmits } from "@/lib/trust-reach";
 import { flushSync } from "react-dom";
 import { eventStore, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, feedBaseRelays, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
 import { takeFirstScreen } from "@/lib/first-screen";
-import { overallOrOurs } from "@/lib/trending-source";
+import { overallRanking } from "@/lib/trending-source";
 import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
 import { chooseDiscoverLens } from "@/lib/discover-trust";
 import { getCachedFeedEvents, cacheFeedEvents } from "@/lib/indexeddb-cache";
@@ -57,7 +57,7 @@ import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useDiscoverPrefs, setDiscoverSort } from "@/lib/discover-prefs";
 import { FeedFilter, type FeedOrderValue, type PresetValue, type ContentFilterValue } from "./home/FeedFilter";
 import { FeedsList } from "./home/FeedsList";
-import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickTopBy, pickFrom, startingTrendingSelector, type TopBy, type TrendingFrom } from "./home/feed-menu";
+import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickFrom, startingTrendingSelector, type TrendingFrom } from "./home/feed-menu";
 import { MediaGridGallery } from "./home/media-grid";
 
 import { rankDiscoverFeed } from "@/lib/discover-rank";
@@ -113,7 +113,7 @@ import { useNostrFeeds, type NostrCustomFeed } from "@/hooks/use-nostr-feeds";
 import { FeedIcon as FeedIconSvg, isValidFeedIconKey, type FeedIconKey } from "@/components/FeedIcons";
 
 import { publicNostrEnabled, publicNostrStorageKey } from "@/lib/public-nostr";
-import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, type ArchivesRange, type ArchivesMetric, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, getFeedSortKey, getTopWindowKey, isArchivesSelector, getArchivesMetric, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, feedBodyFor } from "./home/helpers";
+import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow, TRENDING_SELECTORS, SAVED_POLL_SORTS, type SavedPollSort, SAVED_POLL_SHOW_OPTIONS, type SavedPollShow, FEED_SORT_OPTIONS, TIME_WINDOW_SORT_MODES, TOP_TIME_WINDOWS, PAGE_SIZE, TRENDING_CACHE_TTL, getFeedSortKey, getTopWindowKey, resolveDefaultFeedMode, initialFeedMode, DEFAULT_FEED_MODE, feedBodyFor } from "./home/helpers";
 
 /**
  * How long the network gets before the cached feed is allowed to paint.
@@ -124,7 +124,6 @@ import { FeedMode, type ContentFilter, isReplyEvent, FeedSortMode, TopTimeWindow
  * one — not to be a token pause.
  */
 const CACHE_FALLBACK_DELAY_MS = 1800;
-import { fetchTopNotes } from "@/lib/nostr-archives";
 import { FeedSkeletonList, TuneFrequencyDialog, FeedTierFilter } from "./home/feed-controls";
 import { detectPreset, PRESET_DEFS, type StrictnessPreset } from "@/lib/trust-preset";
 import { writeExcludedTiers } from "@/lib/trust-filter";
@@ -590,20 +589,10 @@ export default function Home() {
       return startingTrendingSelector(null, null);
     }
   });
-  // Overall couldn't be reached and our own chart is showing instead.
-  const [trendingFellBack, setTrendingFellBack] = useState(false);
+  // Whether the ranking answered the last time Trending asked (lib/trending-source.ts).
+  // Not reached is its own state on screen, never an empty list.
+  const [trendingReached, setTrendingReached] = useState(true);
 
-  const [archivesRange, setArchivesRangeState] = useState<ArchivesRange>(() => {
-    try {
-      const saved = sessionStorage.getItem("relay-outpost-archives-range");
-      if (saved && ["today", "7d", "30d", "1y", "all"].includes(saved)) return saved as ArchivesRange;
-    } catch {}
-    return "today";
-  });
-  const setArchivesRange = useCallback((range: ArchivesRange) => {
-    setArchivesRangeState(range);
-    try { sessionStorage.setItem("relay-outpost-archives-range", range); } catch {}
-  }, []);
   const setTrendingSelector = useCallback((sel: string) => {
     setTrendingSelectorState(sel);
     try { sessionStorage.setItem("relay-outpost-trending-selector", sel); } catch {}
@@ -620,17 +609,11 @@ export default function Home() {
   }, []);
   const [trendingLoading, setTrendingLoading] = useState(false);
 
-  // ---- Trending's filter: "Top by" and "From" (home/feed-menu.ts) ----
-  const handleTopBy = useCallback((v: TopBy) => {
-    setTrendingSelector(pickTopBy(v, trendingSelector).selector);
-  }, [trendingSelector, setTrendingSelector]);
+  // ---- Trending's filter: "From" (home/feed-menu.ts) ----
   const handleTrendingFrom = useCallback((v: TrendingFrom) => {
-    const next = pickFrom(v);
-    if (next.selector) setTrendingSelector(next.selector);
-    if (next.range) setArchivesRange(next.range);
-  }, [setTrendingSelector, setArchivesRange]);
+    setTrendingSelector(pickFrom(v).selector);
+  }, [setTrendingSelector]);
   const trendingCacheRef = useRef<Map<string, { posts: Event[]; fetchedAt: number }>>(new Map());
-  const trendingPrefetchedRef = useRef(false);
   const followingSubRef = useRef<{ close: () => void } | null>(null);
   const liveSubRef = useRef<{ close: () => void } | null>(null);
   const repostMapRef = useRef<Map<string, { pubkey: string; timestamp: number }>>(new Map());
@@ -1462,21 +1445,21 @@ export default function Home() {
     };
   }, [feedSortMode, topTimeWindow, activeCustomFeed]);
 
-  // The chart on screen (selector + range). A load answers for ITS chart: the
-  // Likes prefetch, or the range you just switched away from, landing late
-  // used to replace the chart you were looking at (ship/trending-chart-e2e.cjs).
+  // The window on screen. A load answers for ITS window: the one you just
+  // switched away from, landing late, used to replace the list you were
+  // looking at (ship/trending-chart-e2e.cjs).
   const shownTrendingKeyRef = useRef("");
-  shownTrendingKeyRef.current = isArchivesSelector(trendingSelector) ? `${trendingSelector}_${archivesRange}` : trendingSelector;
+  shownTrendingKeyRef.current = trendingSelector;
 
   const loadTrending = useCallback(async (selector: string, options?: { force?: boolean; background?: boolean }) => {
-    const cacheKey = isArchivesSelector(selector) ? `${selector}_${archivesRange}` : selector;
+    const cacheKey = selector;
     const cached = trendingCacheRef.current.get(cacheKey);
     const now = Date.now();
     const isStale = !cached || (now - cached.fetchedAt > TRENDING_CACHE_TTL);
     const isShown = () => cacheKey === shownTrendingKeyRef.current;
 
     if (cached && !options?.force) {
-      if (isShown()) setTrendingPosts(cached.posts);
+      if (isShown()) { setTrendingPosts(cached.posts); setTrendingReached(true); }
       if (!isStale) return;
     }
 
@@ -1485,67 +1468,31 @@ export default function Home() {
     }
 
     try {
-      let posts: Event[];
-
-      // Our own server's chart (archives): the four counts, and the stand-in
-      // when Overall can't be reached.
-      const ourChart = async (m: ArchivesMetric, range: ArchivesRange): Promise<Event[]> => {
-        const result = await fetchTopNotes({ metric: m, range, limit: 60 });
-        const nowTs = Math.floor(Date.now() / 1000);
-        const got = result.notes
-          .filter(n => n.event && n.event.created_at <= nowTs)
-          .map(n => ({
-            id: n.event.id,
-            pubkey: n.event.pubkey,
-            kind: n.event.kind,
-            content: n.event.content,
-            tags: n.event.tags,
-            created_at: n.event.created_at,
-            sig: n.event.sig || "",
-          } as Event));
-        if (got.length > 0) await prefetchStatsImmediate(got.map(p => p.id));
-        return got;
-      };
-
-      const metric = getArchivesMetric(selector);
-      let fellBack = false;
-      if (metric) {
-        posts = await ourChart(metric, archivesRange);
-      } else {
-        // Overall is Primal's ranking alone; Primal supports, it never leads
-        // (lib/trending-source.ts): when it can't answer, most replied today.
-        const got = await overallOrOurs(() => fetchTrendingFeed(selector, pubkey || undefined, 40), () => ourChart("replies", "today"));
-        posts = got.posts;
-        fellBack = got.fellBack;
-      }
-
-      // A stand-in isn't kept as Overall's answer: the next visit asks again.
-      if (!fellBack) trendingCacheRef.current.set(cacheKey, { posts, fetchedAt: Date.now() });
-      if (!isShown()) return; // cached for later; not the chart on screen
-      if (!options?.background) setTrendingFellBack(fellBack);
-      setTrendingPosts(posts);
+      // The ranking is Primal's alone; Primal supports, it never leads
+      // (lib/trending-source.ts): when it can't answer, Trending says so.
+      const got = await overallRanking(() => fetchTrendingFeed(selector, pubkey || undefined, 40));
+      // Only an answer is kept: after "not reached", the next visit asks again.
+      if (got.reached) trendingCacheRef.current.set(cacheKey, { posts: got.posts, fetchedAt: Date.now() });
+      if (!isShown()) return; // kept for later; not the window on screen
+      // A background refresh that could not reach the ranking leaves the list
+      // already on screen alone.
+      if (!got.reached && options?.background && cached) return;
+      setTrendingReached(got.reached);
+      setTrendingPosts(got.posts);
     } catch (err) {
       console.error("Failed to fetch trending:", err);
     } finally {
       if (isShown()) setTrendingLoading(false);
     }
-  }, [pubkey, archivesRange]);
-
-  useEffect(() => {
-    if (!widerNetworkOn) return; // trending is the wider network
-    if (!trendingPrefetchedRef.current) {
-      trendingPrefetchedRef.current = true;
-      loadTrending("arc_reactions", { background: true });
-    }
-  }, [loadTrending, widerNetworkOn]);
+  }, [pubkey]);
 
   useEffect(() => {
     if (!widerNetworkOn) return; // the lane shows the door instead
     if (feedMode === "deep_scan") {
-      const cacheKey = isArchivesSelector(trendingSelector) ? `${trendingSelector}_${archivesRange}` : trendingSelector;
-      const cached = trendingCacheRef.current.get(cacheKey);
+      const cached = trendingCacheRef.current.get(trendingSelector);
       if (cached) {
         setTrendingPosts(cached.posts);
+        setTrendingReached(true);
         // Shown from memory: any spinner belonged to the chart left behind.
         setTrendingLoading(false);
         const isStale = Date.now() - cached.fetchedAt > TRENDING_CACHE_TTL;
@@ -1556,7 +1503,7 @@ export default function Home() {
         loadTrending(trendingSelector);
       }
     }
-  }, [feedMode, trendingSelector, archivesRange, loadTrending, widerNetworkOn]);
+  }, [feedMode, trendingSelector, loadTrending, widerNetworkOn]);
 
   // Throttled mirror of the eventStore timeline. Subscribing reactively (use$)
   // re-derived the whole feed pipeline (filter → sort → render) on EVERY incoming
@@ -2146,22 +2093,14 @@ export default function Home() {
       minFollowers: 0,
     });
     //
-    // AND ONLY OVERALL TAKES IT. A count chart (Likes, Thanks… over a range)
-    // is exactly the chart: owner screenshot, Thanks · Week, an IPTV channel's
-    // post from "now" with no thanks at all between the most-thanked posts
-    // (lib/feed-merge.ts trendingList; ship/trending-chart-e2e.cjs).
-    const chart = isArchivesSelector(trendingSelector);
-    const withMedia = trendingList(
-      trendingPosts,
-      chart ? [] : gate(mediaNotes),
-      chart ? [] : gate(supplementNotes),
-      { chart },
-    );
+    // With no ranking there is nothing to add to (lib/feed-merge.ts
+    // trendingList): the newest relay posts alone are not Trending.
+    const withMedia = trendingList(trendingPosts, gate(mediaNotes), gate(supplementNotes));
     if (!wotEnabled || !flaggedPubkeys || flaggedPubkeys.size === 0) return withMedia;
     return withMedia.filter((e) => !flaggedPubkeys.has(e.pubkey));
-  }, [trendingPosts, trendingSelector, mediaNotes, supplementNotes, wotEnabled, flaggedPubkeys, spamFilter, followSet, fofSet, profileGetter, profileVersion]);
+  }, [trendingPosts, mediaNotes, supplementNotes, wotEnabled, flaggedPubkeys, spamFilter, followSet, fofSet, profileGetter, profileVersion]);
 
-  // Trending has its own lens (Most Replied / Zapped / etc.), so the
+  // Trending is a ranking of its own, so the
   // Posts/Replies/All content filter doesn't apply here — Trending always shows
   // its full ranked set. Two things DO get applied.
   //
@@ -2192,7 +2131,7 @@ export default function Home() {
   // The pill (and its buffer bookkeeping) exists only on feed modes that
   // genuinely receive live inserts through THIS pipeline — see isLiveFeedMode.
   // The raw_signal consent gate renders a gate screen instead of the feed, so
-  // it's excluded too. Static surfaces (Trending archives, Saved macro media
+  // it's excluded too. Static surfaces (Trending, Saved macro media
   // feeds, empty states) must never show a count.
   const isLiveFeed = isLiveFeedMode(feedMode) && !(feedMode === "raw_signal" && showRawGate);
 
@@ -2876,7 +2815,7 @@ export default function Home() {
   const isCustomLoading = !!activeCustomFeed && displayedEvents.length === 0 && isInitialLoading;
 
   const currentSelector = TRENDING_SELECTORS.find((s) => s.value === trendingSelector);
-  const currentSelectorLabel = currentSelector?.label ?? "Most Replied";
+  const currentSelectorLabel = (currentSelector?.label ?? "Last hour").toLowerCase();
 
   // The Feeds tab names the feed on screen while one of its feeds is
   // ("Photos ▾", "#naturestr ▾"); "Feeds" otherwise (home/feed-menu.ts).
@@ -3165,16 +3104,11 @@ export default function Home() {
             the tab refreshes) — Trending renders no control row under the tabs, matching
             every other feed mode. Only this transient loading feedback line
             survives (posts already on screen, a new chart on its way). */}
-        {feedMode === "deep_scan" && trendingFellBack && !isArchivesSelector(trendingSelector) && trendingPosts.length > 0 && (
-          <p className="mb-3 text-[12px] text-muted-foreground" data-testid="text-trending-fallback">
-            The overall ranking isn't answering right now, so this is what's most replied today.
-          </p>
-        )}
         {feedMode === "deep_scan" && trendingLoading && trendingPosts.length > 0 && (
           <div className="mb-3">
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5" data-testid="text-trending-loading">
               <RelayOutpostInlineLoader className="text-foreground/50" />
-              Loading {currentSelectorLabel}...
+              Loading the {currentSelectorLabel}...
             </p>
           </div>
         )}
@@ -3377,10 +3311,25 @@ export default function Home() {
             data-testid="container-empty-trending"
           >
             <RadarSweepIllustration className="text-foreground mb-3" />
-            <p className="text-sm font-medium mb-1">Deep scan returned empty</p>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              Try a different time range or check back later.
-            </p>
+            {trendingReached ? (<>
+              <p className="text-sm font-medium mb-1" data-testid="text-trending-quiet">Nothing is trending right now</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Try the other time range in the filter, or check back later.
+              </p>
+            </>) : (<>
+              {/* Never reached is not the same as nothing there (lib/trending-source.ts). */}
+              <p className="text-sm font-medium mb-1" data-testid="text-trending-unreachable">Trending can't be reached right now</p>
+              <p className="text-xs text-muted-foreground max-w-xs mb-3">
+                Its ranking comes from an outside service that isn't answering. Your other feeds are not affected.
+              </p>
+              <button
+                onClick={() => setFeedMode("raw_signal")}
+                className="min-h-11 px-3 text-[13px] font-medium text-brand hover:text-brand-strong transition-colors"
+                data-testid="button-trending-go-for-you"
+              >
+                Go to For you
+              </button>
+            </>)}
           </div>
         ) : displayedEvents.length === 0 && excludedTiers.size > 0 && tierHiddenCount > 0 ? (
           <div
@@ -3526,8 +3475,6 @@ export default function Home() {
         onPreset={handlePresetChange}
         onAdvanced={() => navigate("/account?tab=shield")}
         trendingSelector={trendingSelector}
-        archivesRange={archivesRange}
-        onTopBy={handleTopBy}
         onFrom={handleTrendingFrom}
         mediaSort={mediaSort}
         onMediaSort={setMediaSort}

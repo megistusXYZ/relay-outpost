@@ -13,10 +13,10 @@ import { SuggestedFollowsStrip } from "@/components/SuggestedFollowsStrip";
 import { VirtualFeed } from "@/components/VirtualFeed";
 import { SearchPill } from "@/components/SearchPill";
 import { NewsIcon } from "@/components/icons/NewsIcon";
-import { searchUsersWithStatus, getLastBrainstormWotScores, fetchTrendingHashtags, fetchTrendingFeed, searchNostr, searchNostrPaginated, type TrendingHashtag, type SearchUsersStatus, primalStatsCache } from "@/lib/primal-cache";
+import { searchUsersWithStatus, getLastBrainstormWotScores, fetchTrendingHashtags, fetchTrendingFeed, searchNostr, searchNostrPaginated, type TrendingHashtag, type SearchUsersStatus } from "@/lib/primal-cache";
 import { discoverByTopic } from "@/lib/brainstorm-search";
 import { lookupProfileDirect } from "@/lib/profile-direct";
-import { searchArchivesEvents, fetchTopNotes, type ArchivesSortOption, type ArchivesEvent, type TopNoteMetric, type TopNoteRange } from "@/lib/nostr-archives";
+import { overallRanking } from "@/lib/trending-source";
 import { getRelaysForPurpose, pool, DEFAULT_RELAYS, fetchProfilesCached, eventStore, publishEvent, verifySignedEventKind } from "@/lib/nostr";
 import { queryAnswered } from "@/lib/relay-reach";
 import { getDisplayName, getAvatarUrl, getProfileContent, formatNpub, shortenNpub, KIND_LIVE_EVENT, KIND_METADATA, KIND_FOLLOW_LIST, LIVE_STREAM_RELAYS } from "@/lib/nostr-helpers";
@@ -64,12 +64,9 @@ import {
   ShieldCheck,
   Brain,
   BookOpen,
-  Heart,
   Lock,
   ChevronDown,
   ChevronUp,
-  Clock,
-  MessageCircle,
   Calendar as CalendarIcon,
   ChevronRight,
   User as UserIcon,
@@ -89,7 +86,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ShareEventDialog } from "@/components/ShareEventDialog";
 import { searchUsers as searchUsersNip50 } from "@/lib/primal-cache";
 import { searchCachedProfiles } from "@/lib/nostr";
-import { BtcZapIcon } from "@/components/nostr-post/author-hover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DesktopOptionsPopover } from "@/components/DesktopOptionsPopover";
 import { PageTabs } from "@/components/PageTabs";
@@ -1547,102 +1543,6 @@ function ProfileCard({ profile, tier, isFollowed, followsYou, grouped = false }:
 }
 
 
-type PostSortOption = "recent" | "reactions" | "zaps" | "replies";
-type PostTimeFilter = "all" | "24h" | "7d" | "30d" | "1y";
-
-const POST_SORT_OPTIONS: { value: PostSortOption; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: "recent", label: "Recent", icon: Clock },
-  { value: "reactions", label: "Most Reacted", icon: Heart },
-  { value: "zaps", label: "Most Zapped", icon: BtcZapIcon },
-  { value: "replies", label: "Most Replied", icon: MessageCircle },
-];
-
-const POST_TIME_FILTERS: { value: PostTimeFilter; label: string; seconds: number | null; topRange: TopNoteRange }[] = [
-  { value: "24h", label: "24h", seconds: 86400, topRange: "today" },
-  { value: "7d", label: "7d", seconds: 604800, topRange: "7d" },
-  { value: "30d", label: "30d", seconds: 2592000, topRange: "30d" },
-  { value: "1y", label: "1y", seconds: 31536000, topRange: "1y" },
-  { value: "all", label: "All", seconds: null, topRange: "all" },
-];
-
-const SORT_MAP: Record<PostSortOption, ArchivesSortOption> = {
-  recent: "created_at",
-  reactions: "reactions",
-  zaps: "zaps",
-  replies: "replies",
-};
-
-const METRIC_MAP: Record<PostSortOption, TopNoteMetric> = {
-  recent: "reactions",
-  reactions: "reactions",
-  zaps: "zaps",
-  replies: "replies",
-};
-
-function archivesToEvents(archiveEvents: ArchivesEvent[]): Event[] {
-  const now = Math.floor(Date.now() / 1000);
-  const statsUpdate: Record<string, { replies: number; reposts: number; likes: number; zaps: number; zapAmount: number }> = {};
-  const events = archiveEvents.filter(ae => ae.created_at <= now).map(ae => {
-    const reactions = ae.reactions ?? ae.reactions_count ?? 0;
-    const replies = ae.replies ?? ae.replies_count ?? 0;
-    const zapSats = ae.zap_sats ?? ae.zaps_total ?? 0;
-    const zapCount = ae.zaps_count ?? (zapSats > 0 ? 1 : 0);
-    const reposts = ae.reposts ?? ae.reposts_count ?? 0;
-    if (reactions || replies || zapCount || reposts) {
-      statsUpdate[ae.id] = {
-        replies,
-        reposts,
-        likes: reactions,
-        zaps: zapCount,
-        zapAmount: zapSats,
-      };
-    }
-    return {
-      id: ae.id,
-      pubkey: ae.pubkey,
-      kind: ae.kind,
-      content: ae.content,
-      tags: ae.tags,
-      created_at: ae.created_at,
-      sig: ae.sig || "",
-    } as Event;
-  });
-  if (Object.keys(statsUpdate).length > 0) {
-    primalStatsCache.update(statsUpdate);
-  }
-  return events;
-}
-
-function topNotesToEvents(notes: import("@/lib/nostr-archives").TopNote[]): Event[] {
-  const now = Math.floor(Date.now() / 1000);
-  const statsUpdate: Record<string, { replies: number; reposts: number; likes: number; zaps: number; zapAmount: number }> = {};
-  const events = notes.filter(note => note.event.created_at <= now).map(note => {
-    const ev = note.event;
-    if (note.reactions || note.replies || note.zap_sats || note.reposts) {
-      statsUpdate[ev.id] = {
-        replies: note.replies || 0,
-        reposts: note.reposts || 0,
-        likes: note.reactions || 0,
-        zaps: note.zap_sats > 0 ? 1 : 0,
-        zapAmount: note.zap_sats || 0,
-      };
-    }
-    return {
-      id: ev.id,
-      pubkey: ev.pubkey,
-      kind: ev.kind,
-      content: ev.content,
-      tags: ev.tags || [],
-      created_at: ev.created_at,
-      sig: ev.sig || "",
-    } as Event;
-  });
-  if (Object.keys(statsUpdate).length > 0) {
-    primalStatsCache.update(statsUpdate);
-  }
-  return events;
-}
-
 function TrendingChartIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1658,14 +1558,9 @@ function PostsTab(_props: TabProps) {
 
   const [feedPosts, setFeedPosts] = useState<Event[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
-  const feedLoadedKeyRef = useRef<string>("");
-  const feedIdsRef = useRef(new Set<string>());
-  const [feedHasMore, setFeedHasMore] = useState(true);
-  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
-  const feedLoadingMoreRef = useRef(false);
-
-  const [sortOption, setSortOption] = useState<PostSortOption>("replies");
-  const [timeFilter, setTimeFilter] = useState<PostTimeFilter>("24h");
+  // Whether the ranking answered (lib/trending-source.ts): never reached is
+  // its own line on screen, not "No posts found".
+  const [feedReached, setFeedReached] = useState(true);
 
   // Keyword search across posts. Backend = searchNostr() (Primal's ranked
   // search + NIP-50 relay fallback, already integrated). Manual submit keeps it
@@ -1797,118 +1692,35 @@ function PostsTab(_props: TabProps) {
   const trustRanking =
     trustGated && scoresLoading && displayedResults.length === 0 && moderatedResults.length > 0;
 
-  // The trending/sorted feed honors the same moderation: muted/blocked/reported
+  // The trending list honors the same moderation: muted/blocked/reported
   // authors never appear here either.
   const moderatedFeedPosts = useMemo(
     () => feedPosts.filter((e) => !isModerated(e)),
     [feedPosts, isModerated],
   );
 
-  const isDefaultFeed = sortOption === "recent" && timeFilter === "all";
-  const feedKey = `${sortOption}_${timeFilter}`;
-
+  // The list before you search: one ranking, the last four hours. It used to
+  // have sorts (most reacted, zapped, replied) and ranges from a day to all
+  // time; they came from an outside archive that closed (2026-11-21).
   useEffect(() => {
-    if (feedLoadedKeyRef.current === feedKey) return;
-    feedLoadedKeyRef.current = feedKey;
-    feedIdsRef.current.clear();
-    setFeedHasMore(true);
-
-    const cacheKey = `posts_feed_v2_${feedKey}`;
+    const cacheKey = "posts_feed_v3_trending";
     const cached = getSessionCache<Event[]>(cacheKey);
     if (cached && cached.length > 0) {
       setFeedPosts(cached);
-      for (const p of cached) feedIdsRef.current.add(p.id);
       setFeedLoading(false);
-      setFeedHasMore(sortOption === "recent" && cached.length >= SEARCH_PAGE_SIZE);
       return;
     }
-
     setFeedLoading(true);
-    (async () => {
-      try {
-        if (isDefaultFeed) {
-          const posts = await fetchTrendingFeed("trending_4h", pubkey || undefined, 40);
-          if (feedLoadedKeyRef.current !== feedKey) return;
-          for (const p of posts) feedIdsRef.current.add(p.id);
-          setFeedPosts(posts);
-          setSessionCache(cacheKey, posts);
-          setFeedHasMore(false);
-        } else {
-          const timeConfig = POST_TIME_FILTERS.find(t => t.value === timeFilter);
-          const topRange = timeConfig?.topRange || "today";
-          const metric = METRIC_MAP[sortOption];
-          const isEngagementSort = sortOption !== "recent";
-          let posts: Event[];
-          if (isEngagementSort) {
-            const { notes } = await fetchTopNotes({ metric, range: topRange, limit: 50 });
-            if (feedLoadedKeyRef.current !== feedKey) return;
-            posts = topNotesToEvents(notes);
-          } else {
-            const since = timeConfig?.seconds ? Math.floor(Date.now() / 1000) - timeConfig.seconds : undefined;
-            const { events: archiveEvents } = await searchArchivesEvents({
-              kind: 1,
-              limit: SEARCH_PAGE_SIZE,
-              sort: SORT_MAP[sortOption],
-              since,
-            });
-            if (feedLoadedKeyRef.current !== feedKey) return;
-            posts = archivesToEvents(archiveEvents);
-          }
-          for (const p of posts) feedIdsRef.current.add(p.id);
-          setFeedPosts(posts);
-          setSessionCache(cacheKey, posts);
-          setFeedHasMore(!isEngagementSort && posts.length >= SEARCH_PAGE_SIZE);
-          const profilePks = Array.from(new Set(posts.map(e => e.pubkey))).slice(0, 50);
-          if (profilePks.length > 0) fetchProfilesCached(profilePks);
-        }
-      } catch {
-        if (feedLoadedKeyRef.current === feedKey) setFeedPosts([]);
-      } finally {
-        if (feedLoadedKeyRef.current === feedKey) setFeedLoading(false);
-      }
-    })();
-  }, [feedKey, pubkey, isDefaultFeed, sortOption, timeFilter]);
-
-  const loadMoreFeed = useCallback(async () => {
-    if (feedLoadingMoreRef.current || !feedHasMore || isDefaultFeed || sortOption !== "recent") return;
-    feedLoadingMoreRef.current = true;
-    setFeedLoadingMore(true);
-    const requestKey = feedKey;
-    try {
-      const timeConfig = POST_TIME_FILTERS.find(t => t.value === timeFilter);
-      const since = timeConfig?.seconds ? Math.floor(Date.now() / 1000) - timeConfig.seconds : undefined;
-      const { events: archiveEvents } = await searchArchivesEvents({
-        kind: 1,
-        limit: SEARCH_PAGE_SIZE,
-        offset: feedIdsRef.current.size,
-        sort: SORT_MAP[sortOption],
-        since,
-      });
-      if (feedLoadedKeyRef.current !== requestKey) { feedLoadingMoreRef.current = false; setFeedLoadingMore(false); return; }
-      const newPosts = archivesToEvents(archiveEvents.filter(ae => !feedIdsRef.current.has(ae.id)));
-      for (const p of newPosts) feedIdsRef.current.add(p.id);
-      if (newPosts.length > 0) {
-        setFeedPosts(prev => [...prev, ...newPosts]);
-        const profilePks = Array.from(new Set(newPosts.map(e => e.pubkey))).slice(0, 50);
-        if (profilePks.length > 0) fetchProfilesCached(profilePks);
-      }
-      if (archiveEvents.length < SEARCH_PAGE_SIZE) setFeedHasMore(false);
-    } catch {
-      if (feedLoadedKeyRef.current === requestKey) setFeedHasMore(false);
-    } finally {
-      feedLoadingMoreRef.current = false;
-      setFeedLoadingMore(false);
-    }
-  }, [feedHasMore, isDefaultFeed, sortOption, timeFilter, feedKey]);
-
-  const feedLabel = isDefaultFeed
-    ? "Trending"
-    : sortOption === "reactions" ? "Most Reacted"
-    : sortOption === "zaps" ? "Most Zapped"
-    : sortOption === "replies" ? "Most Replied"
-    : "Recent";
-
-  const timeLabel = timeFilter === "all" ? "" : POST_TIME_FILTERS.find(t => t.value === timeFilter)?.label || "";
+    let live = true;
+    void overallRanking(() => fetchTrendingFeed("trending_4h", pubkey || undefined, 40)).then((got) => {
+      if (!live) return;
+      setFeedReached(got.reached);
+      setFeedPosts(got.posts);
+      if (got.posts.length > 0) setSessionCache(cacheKey, got.posts);
+      setFeedLoading(false);
+    });
+    return () => { live = false; };
+  }, [pubkey]);
 
   return (
     <div>
@@ -2009,72 +1821,18 @@ function PostsTab(_props: TabProps) {
       )}
 
       {postsMode === "trending" && (<>
-      {!isDefaultFeed && (
-        <div className="flex items-center mb-2">
-          <a href="https://nostrarchives.com" target="_blank" rel="noopener noreferrer" className="inline-flex">
-            <Badge variant="secondary" className="text-xs bg-brand/10 text-brand border-brand/20 cursor-pointer hover:bg-brand/20 transition-colors gap-1">
-              <span className="font-normal">powered by</span>
-              <Globe className="w-2.5 h-2.5 opacity-60" />
-              Archives
-            </Badge>
-          </a>
-        </div>
-      )}
-
-      <div className="flex items-center gap-1.5 sm:gap-2 mb-4 flex-wrap">
-        <div className="flex items-center gap-0.5 bg-secondary/30 rounded-lg p-0.5 border border-border/30">
-          {POST_SORT_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setSortOption(opt.value)}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${ sortOption === opt.value ? "bg-accent text-accent-foreground dark:text-brand shadow-sm border border-brand/20 dark:border-brand/30" : "text-muted-foreground hover:bg-secondary/50 border border-transparent" }`}
-              data-testid={`sort-${opt.value}`}
-            >
-              <opt.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{opt.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="h-4 w-px bg-border/30 hidden sm:block" />
-        <div className="flex items-center gap-0.5">
-          {POST_TIME_FILTERS.map(tf => (
-            <button
-              key={tf.value}
-              onClick={() => setTimeFilter(tf.value)}
-              className={`px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                timeFilter === tf.value
-                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-400/30"
-                  : "text-muted-foreground border border-transparent hover:border-border/30"
-              }`}
-              data-testid={`time-${tf.value}`}
-            >
-              {tf.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div data-testid="container-posts-discovery">
         <div className="flex items-center gap-2 mb-3">
-          {isDefaultFeed ? (
-            <Activity className="w-4 h-4 text-brand" />
-          ) : sortOption === "zaps" ? (
-            <BtcZapIcon className="w-4 h-4 text-amber-800 dark:text-amber-400" />
-          ) : sortOption === "reactions" ? (
-            <Heart className="w-4 h-4 text-pink-400" />
-          ) : sortOption === "replies" ? (
-            <MessageCircle className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-          ) : (
-            <Clock className="w-4 h-4 text-brand" />
-          )}
-          <h3 className="text-sm font-semibold">{feedLabel}</h3>
-          {isDefaultFeed && <span className="text-xs font-mono text-muted-foreground">4H</span>}
-          {!isDefaultFeed && timeLabel && <span className="text-xs font-mono text-muted-foreground">{timeLabel}</span>}
+          <Activity className="w-4 h-4 text-brand" />
+          <h3 className="text-sm font-semibold">Trending</h3>
+          <span className="text-xs text-muted-foreground">last 4 hours</span>
         </div>
         {feedLoading ? (
-          <LoadingState message={isDefaultFeed ? "Loading trending posts..." : `Loading ${feedLabel.toLowerCase()} posts...`} />
+          <LoadingState message="Loading trending posts..." />
         ) : moderatedFeedPosts.length === 0 ? (
-          <EmptyState icon={FileText} message="No posts found" hint={isDefaultFeed ? "Check back later for popular content." : "Try a different time range or sort."} />
+          feedReached
+            ? <EmptyState icon={FileText} message="Nothing is trending right now" hint="Check back later, or search posts by words above." />
+            : <div data-testid="posts-trending-unreachable"><EmptyState icon={FileText} message="Trending can't be reached right now" hint="Its ranking comes from an outside service that isn't answering. Searching posts by words still works." /></div>
         ) : (
           <div className="space-y-3">
             {/* Virtualized — same OOM guard as the hashtag results. */}
@@ -2083,10 +1841,8 @@ function PostsTab(_props: TabProps) {
               getKey={(event) => event.id}
               estimateSize={340}
               gap={12}
-              onReachEnd={!isDefaultFeed ? loadMoreFeed : undefined}
               renderItem={(event) => <PostBoundary id={event.id}><NostrPost event={event} /></PostBoundary>}
             />
-            {!isDefaultFeed && <ScrollSentinel onLoadMore={loadMoreFeed} isLoading={feedLoadingMore} hasMore={feedHasMore} />}
           </div>
         )}
       </div>

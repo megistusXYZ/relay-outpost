@@ -37,7 +37,7 @@ describe("isLiveFeedMode", () => {
     expect(isLiveFeedMode("custom_abc123")).toBe(true);
   });
 
-  it("Trending/archives (deep_scan) is static", () => {
+  it("Trending (deep_scan) is static", () => {
     expect(isLiveFeedMode("deep_scan")).toBe(false);
   });
 

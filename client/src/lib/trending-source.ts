@@ -1,32 +1,37 @@
 /**
- * Trending's "Overall" ranking comes only from Primal. Owner's rule
- * (2026-09-30): Primal supports, it never leads. So when Overall can't be
- * reached (its main host answers 502 at times; measured 2026-10-03), Trending
- * shows our own server's chart instead, most replied today, and says so,
- * rather than an empty page that looks like nobody posted. A fully
- * unreachable Primal doesn't fail, its client keeps retrying, so Overall
+ * Trending's ranking comes from one outside service (Primal's "Overall").
+ * Owner's rule (2026-09-30): Primal supports, it never leads, so nothing else
+ * in the app waits on this, and Trending itself must say plainly when the
+ * ranking can't be had.
+ *
+ * Asking has three outcomes, and they are kept apart: posts, an answer with
+ * nothing in it (quiet), and no answer at all (never reached). A fully
+ * unreachable Primal doesn't fail, its client keeps retrying, so the ranking
  * gets OVERALL_WAIT_MS and no more.
+ *
+ * Until 2026-11-21 a second outside service stood in when the first could not
+ * answer ("most replied today"). It closed, and with it the stand-in.
  */
-/** How long Overall gets before our chart stands in (a down Primal can hang, not fail). */
+/** How long the ranking gets before it counts as not reached (a down Primal can hang, not fail). */
 export const OVERALL_WAIT_MS = 6_000;
 
-export async function overallOrOurs<T>(
+const NOT_REACHED = Symbol("not reached");
+
+export async function overallRanking<T>(
   overall: () => Promise<T[]>,
-  ours: () => Promise<T[]>,
   waitMs = OVERALL_WAIT_MS,
-): Promise<{ posts: T[]; fellBack: boolean }> {
+): Promise<{ posts: T[]; reached: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const got = await Promise.race([
       overall(),
-      new Promise<T[]>((resolve) => { timer = setTimeout(() => resolve([]), waitMs); }),
+      new Promise<typeof NOT_REACHED>((resolve) => { timer = setTimeout(() => resolve(NOT_REACHED), waitMs); }),
     ]);
+    if (got === NOT_REACHED) return { posts: [], reached: false };
+    return { posts: got, reached: true };
+  } catch {
+    return { posts: [], reached: false };
+  } finally {
     clearTimeout(timer);
-    if (got.length > 0) return { posts: got, fellBack: false };
-  } catch {}
-  try {
-    const got = await ours();
-    if (got.length > 0) return { posts: got, fellBack: true };
-  } catch {}
-  return { posts: [], fellBack: false };
+  }
 }
