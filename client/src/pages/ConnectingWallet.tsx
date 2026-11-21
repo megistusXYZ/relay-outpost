@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import {
   Zap,
@@ -35,7 +36,7 @@ function WalletProviderCard({ name, url, description }: { name: string; url: str
 }
 
 export default function ConnectingWallet() {
-  useDocumentTitle("Connecting a Lightning wallet — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/help/connecting-wallet"));
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150">

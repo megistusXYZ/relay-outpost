@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { OttoEmpty } from "@/components/OttoEmpty";
 import { SuggestionsBoard } from "@/components/SuggestionsBoard";
@@ -5172,7 +5173,7 @@ function StarterCommunityIcon({ url, name }: { url: string; name: string }) {
 }
 
 export default function Outposts() {
-  useDocumentTitle("Communities · Relay Outpost");
+  useDocumentTitle(publicPageTitle("/outposts"));
   const { pubkey } = useNostrAuth();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");

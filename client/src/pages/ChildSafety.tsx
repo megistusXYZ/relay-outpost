@@ -10,6 +10,7 @@
  * beyond them. We never claim the power to delete content from relays
  * we don't run, because a reviewer — or a court — can check.
  */
+import { publicPageTitle } from "@shared/public-pages";
 import { ArrowLeft, ShieldAlert, Flag, Eye, Scale, Mail, Compass } from "lucide-react";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useGoBack } from "@/hooks/use-go-back";
@@ -46,7 +47,7 @@ function Section({
 }
 
 export default function ChildSafety() {
-  useDocumentTitle("Child safety standards — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/child-safety"));
   const goBack = useGoBack();
 
   return (

@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import {
   Shield, Key, Globe, Users, Zap,
@@ -230,7 +231,7 @@ function CountBar({ label, count, total, color }: { label: string; count: number
 }
 
 export default function NostrVsAlternatives() {
-  useDocumentTitle("Nostr vs. the alternatives — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/help/nostr-vs-alternatives"));
 
   const totals = COMPARISON_DATA.reduce(
     (acc, row) => {

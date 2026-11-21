@@ -7,6 +7,8 @@
 // article metadata (with branded fallbacks), and the OG HTML itself (all
 // interpolations escaped — article titles are untrusted input into HTML).
 
+import { SHARE_IMAGE } from "./page-meta";
+
 /** Longest ?discuss= value we'll consider. Anything bigger is junk. */
 export const MAX_DISCUSS_PARAM_LENGTH = 2048;
 
@@ -132,7 +134,7 @@ export function buildOgHtml(meta: OgHtmlMeta, brandedImageUrl: string): string {
     : "";
   const ogImage = meta.image
     ? `<meta property="og:image" content="${escapeHtml(meta.image)}" />${imageDims}\n    <meta property="og:image:alt" content="${imgAlt}" />`
-    : `<meta property="og:image" content="${escapeHtml(brandedImageUrl)}" />\n    <meta property="og:image:width" content="1155" />\n    <meta property="og:image:height" content="630" />\n    <meta property="og:image:alt" content="Relay Outpost — own your account and run your own community" />`;
+    : `<meta property="og:image" content="${escapeHtml(brandedImageUrl)}" />\n    <meta property="og:image:width" content="${SHARE_IMAGE.width}" />\n    <meta property="og:image:height" content="${SHARE_IMAGE.height}" />\n    <meta property="og:image:alt" content="${escapeHtml(SHARE_IMAGE.alt)}" />`;
   const twitterCard = "summary_large_image";
   const twitterImage = meta.image ? escapeHtml(meta.image) : escapeHtml(brandedImageUrl);
   return `<!DOCTYPE html>

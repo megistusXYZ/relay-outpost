@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { useEffect } from "react";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 
@@ -21,7 +22,7 @@ function formatDate(iso: string): string {
 }
 
 export default function WhatsNew() {
-  useDocumentTitle("What's new — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/whats-new"));
 
   // Clear the "unseen" indicator once the user has viewed the latest entries.
   useEffect(() => { markChangelogSeen(); }, []);

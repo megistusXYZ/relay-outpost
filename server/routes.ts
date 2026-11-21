@@ -82,6 +82,9 @@ import { DEFAULT_LENS } from "@shared/default-lens";
  */
 const upstreams = new FailureMemory(60_000);
 import { parseDiscussParam, buildDiscussMeta, buildOgHtml } from "./discuss-og";
+import { applyPageMeta, publicPagePath, sitemapXml } from "./page-meta";
+import { readFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 
 type OgData = { title: string; description: string; image: string; siteName: string; url: string; video?: boolean; audioUrl?: string; radioStation?: string };
 const ogCache = new TTLCache<OgData>(500, 60 * 60 * 1000);
@@ -3570,21 +3573,10 @@ export async function registerRoutes(
     }
   });
 
+  // Every page a signed-out visitor can read, once (page-meta.ts). The same table gives each of
+  // those pages its own title, description and address for crawlers, below.
   app.get("/sitemap.xml", (_req, res) => {
-    const baseUrl = "https://relayop.xyz";
-    const routes = [
-      { loc: "/", priority: "1.0", changefreq: "daily" },
-      { loc: "/search", priority: "0.8", changefreq: "daily" },
-      { loc: "/outposts", priority: "0.8", changefreq: "weekly" },
-      { loc: "/articles", priority: "0.7", changefreq: "daily" },
-      { loc: "/live", priority: "0.7", changefreq: "daily" },
-      { loc: "/images", priority: "0.6", changefreq: "daily" },
-      { loc: "/videos", priority: "0.6", changefreq: "daily" },
-      { loc: "/audio", priority: "0.6", changefreq: "daily" },
-    ];
-    const today = new Date().toISOString().split("T")[0];
-    const urls = routes.map(r => `  <url>\n    <loc>${baseUrl}${r.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${r.changefreq}</changefreq>\n    <priority>${r.priority}</priority>\n  </url>`).join("\n");
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+    const xml = sitemapXml(new Date().toISOString().split("T")[0]);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.send(xml);
@@ -3655,6 +3647,28 @@ export async function registerRoutes(
       everyMs: process.env.NODE_ENV === "test" ? 0 : undefined,
     });
   }
+
+  // A public page introduces itself to a crawler (page-meta.ts): the app's own shell, with its
+  // <head> saying which page this is. People get the shell as it is; the app sets its own title.
+  // The built shell never changes while the server runs, so it is read once.
+  let builtShell: string | null | undefined;
+  const readBuiltShell = (): string | null => {
+    if (builtShell !== undefined) return builtShell;
+    try {
+      builtShell = process.env.NODE_ENV === "production" && typeof __dirname !== "undefined"
+        ? readFileSync(resolvePath(__dirname, "public", "index.html"), "utf8")
+        : null;
+    } catch { builtShell = null; }
+    return builtShell;
+  };
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || !publicPagePath(req.path)) return next();
+    if (!CRAWLER_UA.test(String(req.headers["user-agent"] || ""))) return next();
+    const shell = readBuiltShell();
+    const html = shell ? applyPageMeta(shell, req.path) : null;
+    if (!html) return next();
+    res.status(200).set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" }).end(html);
+  });
 
   app.use((req, res, next) => {
     const ua = req.headers["user-agent"] || "";
