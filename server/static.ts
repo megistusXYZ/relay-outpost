@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { apiNotFound } from "./api-not-found";
 
 export function serveStatic(app: Express, distPath: string = path.resolve(__dirname, "public")) {
   if (!fs.existsSync(distPath)) {
@@ -8,6 +9,10 @@ export function serveStatic(app: Express, distPath: string = path.resolve(__dirn
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+
+  // Every API route is registered before this function runs (index.ts), so an
+  // /api path that reaches here matched none of them. It is not a page.
+  app.use("/api", apiNotFound);
 
   app.get("/sw.js", (_req, res) => {
     res.set("Cache-Control", "no-cache, no-store, must-revalidate");
