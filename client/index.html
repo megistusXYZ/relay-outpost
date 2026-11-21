@@ -144,8 +144,6 @@
         --ro-glow:rgba(255,106,61,.30);
         --ro-glow2:rgba(61,107,255,.24);
         --ro-ring:rgba(255,106,61,.32);
-        --ro-dot:rgba(255,255,255,.14);
-        --ro-dot-on:#FF6A3D;
         --ro-trace:#FFD6C8;
         --ro-note:rgba(255,255,255,.5);
         transition:opacity .22s ease;
@@ -158,8 +156,6 @@
         --ro-glow:rgba(255,91,46,.18);
         --ro-glow2:rgba(61,107,255,.12);
         --ro-ring:rgba(255,91,46,.26);
-        --ro-dot:rgba(13,15,18,.14);
-        --ro-dot-on:#FF5B2E;
         --ro-trace:#FF5B2E;
         --ro-note:rgba(13,15,18,.55);
       }
@@ -225,34 +221,10 @@
         0%,100%{opacity:.34;transform:scale(1.06) translate(2%,1.5%);}
         50%{opacity:.72;transform:scale(.94) translate(-2%,-1.5%);}
       }
-      /* The relay ring: one dot per relay the app opens (index.html's
-         __roSplashRelay, fed by warmRelayConnections). A dot lights only when
-         its relay has really connected — never on a timer, never on EOSE. */
-      .ro-splash-ring{position:absolute;inset:0;opacity:0;transition:opacity .3s ease;}
-      .ro-splash-waiting .ro-splash-ring{opacity:1;}
-      .ro-splash-ring i{
-        position:absolute;left:50%;top:50%;
-        width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
-        background:var(--ro-dot);
-        transform:rotate(var(--a,0deg)) translateY(-66px);
-        transition:background .25s ease,box-shadow .25s ease,transform .3s ease;
-      }
-      .ro-splash-ring i.on{background:var(--ro-dot-on);box-shadow:0 0 0 3px var(--ro-glow);animation:roSplashPop .42s cubic-bezier(.2,.9,.3,1.4);}
-      @keyframes roSplashPop{
-        0%{transform:rotate(var(--a,0deg)) translateY(-66px) scale(.4);}
-        60%{transform:rotate(var(--a,0deg)) translateY(-66px) scale(1.5);}
-        100%{transform:rotate(var(--a,0deg)) translateY(-66px) scale(1);}
-      }
-      .ro-splash-status,.ro-splash-retry-note{
+      .ro-splash-retry-note{
         font-family:'Geist',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
         font-size:13px;letter-spacing:0;color:var(--ro-note);
       }
-      .ro-splash-status{
-        position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 112px);
-        text-align:center;opacity:0;transition:opacity .3s ease;
-      }
-      .ro-splash-waiting .ro-splash-status:not(:empty){opacity:1;}
-      .ro-splash-stuck .ro-splash-status:not(:empty){opacity:0;}
       /* Stuck-load reload escape hatch: hidden until #ro-splash gets .ro-splash-stuck */
       .ro-splash-retry{
         position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 44px);left:0;right:0;
@@ -268,11 +240,10 @@
         transition:background .2s ease,border-color .2s ease;
       }
       .ro-splash-retry-btn:active{background:var(--ro-glow);}
-      /* Reduced motion: the mark stays still; dots still light, without the pop. */
+      /* Reduced motion: the mark stays still. */
       @media (prefers-reduced-motion: reduce){
         .ro-splash-waiting .ro-splash-glow,.ro-splash-waiting .ro-splash-glow-2{animation:none;}
         .ro-splash-waiting .ro-splash-trace{animation:none;opacity:0;}
-        .ro-splash-ring i.on{animation:none;}
         #ro-splash{transition:opacity .2s ease;}
       }
     </style>
@@ -294,7 +265,6 @@
       <div class="ro-splash-stage">
         <div class="ro-splash-glow"></div>
         <div class="ro-splash-glow ro-splash-glow-2"></div>
-        <div class="ro-splash-ring" id="ro-splash-ring"></div>
         <svg class="ro-splash-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
           <path d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" />
           <path class="ro-splash-trace" pathLength="100" stroke-dasharray="16 84" d="M78.98 42.24 A30 30 0 1 1 57.76 21.02" />
@@ -302,51 +272,32 @@
           <g class="ro-splash-eyes"><ellipse cx="42" cy="51" rx="3.6" ry="5.2" fill="currentColor" /><ellipse cx="58" cy="51" rx="3.6" ry="5.2" fill="currentColor" /></g>
         </svg>
       </div>
-      <div class="ro-splash-status" id="ro-splash-status"></div>
       <div class="ro-splash-retry" id="ro-splash-retry">
         <div class="ro-splash-retry-note">Taking longer than usual</div>
         <button type="button" class="ro-splash-retry-btn" id="ro-splash-retry-btn">Reload</button>
       </div>
     </div>
     <script>
-      // Splash teardown, the relay ring, and resilience.
+      // Splash teardown and resilience.
       //  - Never longer than the real wait: the app's ready signal fades the
       //    splash at once. Only a load still running at 400 ms gets the moving
       //    mark (.ro-splash-waiting) — a fast launch cuts straight to the app.
-      //  - window.__roSplashRelay(url, 'open' | 'up'): one dot per relay being
-      //    opened (at most 8), lit only when that relay really connected.
+      //  - The launch screen is Relay's face and its loader, nothing around it
+      //    (owner, 2026-11-20): no dot per relay, no count of connections.
       //  - If the app never signals ready (slow/failed bundle on a poor network),
       //    we DON'T remove the splash into a blank screen; we reveal a Reload
       //    escape hatch. Reload re-fetches a fresh index + chunks (network-first),
       //    which also self-heals a stale service-worker cache.
       (function(){
         var WAIT_MS = 400;  // below this, a launch is "instant": no brand beat
-        var MAX_DOTS = 8;
         var el=document.getElementById('ro-splash');
-        var ring=document.getElementById('ro-splash-ring');
-        var status=document.getElementById('ro-splash-status');
-        var dots={}, count=0, up=0;
         var live=function(){ return el && !el.dataset.hiding; };
-        window.__roSplashRelay=function(url,state){
-          if(!live()||!ring||!status)return;
-          var d=dots[url];
-          if(!d){
-            if(count>=MAX_DOTS)return;
-            d=dots[url]=document.createElement('i');
-            ring.appendChild(d);
-            count++;
-            var all=ring.children;
-            for(var i=0;i<all.length;i++){ all[i].style.setProperty('--a',(i*360/all.length)+'deg'); }
-          }
-          if(state==='up'&&!d.classList.contains('on')){ d.classList.add('on'); up++; }
-          status.textContent=(up?'Connected ':'Connecting ')+up+' of '+count;
-        };
-        // The app opens its relays only once its JavaScript runs, which is also
-        // when the splash lifts, so the splash knocks on the fast relays itself
-        // from the first frame: a dot lights on a real socket open, then the
-        // socket closes (it has done its job, and warmed DNS + TLS for the app's
-        // own connection). Same list as FAST_RELAYS in lib/nostr.ts (pinned by
-        // launch-splash.test.ts); relays you blocked are never dialled.
+        // The app opens its relays only once its JavaScript runs, so the splash
+        // knocks on the fast relays itself from the first frame: each socket
+        // closes as soon as it opens, having warmed DNS + TLS for the app's own
+        // connection. Nothing is drawn for it. Same list as FAST_RELAYS in
+        // lib/nostr.ts (pinned by launch-splash.test.ts); relays you blocked are
+        // never dialled.
         var FAST=['wss://relay.damus.io','wss://relay.snort.social','wss://nostr.land','wss://relay.primal.net'];
         var socks=[];
         var norm=function(u){ u=String(u).trim().toLowerCase().replace(/^wss?:\/\//,'').replace(/\/+$/,''); return u; };
@@ -356,10 +307,9 @@
           FAST.forEach(function(url){
             if(blocked[norm(url)])return;
             try{
-              window.__roSplashRelay(url,'open');
               var ws=new WebSocket(url);
               socks.push(ws);
-              ws.onopen=function(){ window.__roSplashRelay(url,'up'); try{ws.close();}catch(e){} };
+              ws.onopen=function(){ try{ws.close();}catch(e){} };
               ws.onerror=function(){ try{ws.close();}catch(e){} };
             }catch(e){}
           });

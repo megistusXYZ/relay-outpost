@@ -1,11 +1,14 @@
 /**
  * The launch splash in client/index.html, run for real: its inline scripts
  * execute in jsdom on a fake clock, and the tests drive it only through the
- * hooks the app uses (window.__roHideSplash, window.__roSplashRelay).
+ * hook the app uses (window.__roHideSplash).
  *
  * Owner-approved launch (2026-09-29): never longer than the real wait; the
- * loop trace and the relay ring appear only once there is a wait (400 ms);
- * a ring dot lights only when that relay really connected.
+ * mark moves only once there is a wait (400 ms).
+ * Owner, 2026-11-20: the launch screen is Relay's face and its loader, with
+ * nothing around it. The ring of dots (one per relay, lit as each connected)
+ * and its "Connecting 2 of 4" are gone; the early knock on the fast relays
+ * stays, as a warm-up that draws nothing.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { JSDOM } from "jsdom";
@@ -36,17 +39,15 @@ function boot(opts: { sockets?: boolean; blocked?: string[] } = {}) {
       window.setTimeout = globalThis.setTimeout;
       window.clearTimeout = globalThis.clearTimeout;
       window.Date = globalThis.Date;
-      // Ring-logic tests drive __roSplashRelay by hand, with no sockets.
       window.WebSocket = opts.sockets ? FakeSocket : undefined;
       if (opts.blocked) window.localStorage.setItem("nostr_blocked_relays", JSON.stringify(opts.blocked));
     },
   });
   const w = dom.window as any;
   const splash = () => w.document.getElementById("ro-splash") as HTMLElement | null;
-  const dots = () => [...(splash()?.querySelectorAll(".ro-splash-ring i") ?? [])] as HTMLElement[];
-  const lit = () => dots().filter((d) => d.classList.contains("on")).length;
-  const status = () => w.document.getElementById("ro-splash-status")?.textContent ?? "";
-  return { w, splash, dots, lit, status };
+  /** Words in the launch screen, whether or not they are showing yet. */
+  const words = () => (splash()?.textContent ?? "").replace(/\s+/g, " ").trim();
+  return { w, splash, words };
 }
 
 beforeEach(() => { vi.useFakeTimers(); });
@@ -78,7 +79,7 @@ describe("never longer than the real wait", () => {
   });
 });
 
-describe("a real wait shows the trace and the ring", () => {
+describe("a real wait starts the mark moving", () => {
   it("still loading at 400 ms: the splash starts waiting", () => {
     const s = boot();
     vi.advanceTimersByTime(399);
@@ -94,89 +95,61 @@ describe("a real wait shows the trace and the ring", () => {
   });
 });
 
-describe("the ring is honest", () => {
-  const A = "wss://relay.damus.io", B = "wss://nos.lol", C = "wss://relay.primal.net";
-
-  it("one unlit dot per relay being opened; a dot lights only when its relay connects", () => {
-    const s = boot();
-    s.w.__roSplashRelay(A, "open");
-    s.w.__roSplashRelay(B, "open");
-    expect(s.dots()).toHaveLength(2);
-    expect(s.lit()).toBe(0);
-    expect(s.status()).toBe("Connecting 0 of 2");
-    s.w.__roSplashRelay(B, "up");
-    expect(s.lit()).toBe(1);
-    expect(s.status()).toBe("Connected 1 of 2");
+describe("nothing around Relay's face", () => {
+  it("draws no ring of dots and no count of relays, with or without sockets", () => {
+    for (const sockets of [false, true]) {
+      const s = boot({ sockets });
+      for (const sock of FakeSocket.all) sock.open();
+      vi.advanceTimersByTime(1000);
+      expect(s.splash()!.querySelector(".ro-splash-ring")).toBeNull();
+      expect(s.w.document.getElementById("ro-splash-status")).toBeNull();
+      expect(s.splash()!.querySelectorAll(".ro-splash-stage > *:not(.ro-splash-glow):not(svg)")).toHaveLength(0);
+    }
   });
 
-  it("the same relay opened or connected twice is still one dot", () => {
+  it("gives the app no way to draw relays on it", () => {
     const s = boot();
-    s.w.__roSplashRelay(A, "open");
-    s.w.__roSplashRelay(A, "open");
-    s.w.__roSplashRelay(A, "up");
-    s.w.__roSplashRelay(A, "up");
-    expect(s.dots()).toHaveLength(1);
-    expect(s.status()).toBe("Connected 1 of 1");
+    expect(s.w.__roSplashRelay).toBeUndefined();
   });
 
-  it("a relay that never connects keeps its dot unlit", () => {
-    const s = boot();
-    s.w.__roSplashRelay(A, "open");
-    s.w.__roSplashRelay(C, "open");
-    s.w.__roSplashRelay(A, "up");
-    vi.advanceTimersByTime(5000);
-    expect(s.lit()).toBe(1);
-    expect(s.status()).toBe("Connected 1 of 2");
+  it("its only words are the ones for a load that hangs", () => {
+    const s = boot({ sockets: true });
+    for (const sock of FakeSocket.all) sock.open();
+    expect(s.words()).toBe("Taking longer than usual Reload");
   });
 
-  it("shows at most 8 dots, and counts only the relays it shows", () => {
-    const s = boot();
-    for (let i = 0; i < 12; i++) s.w.__roSplashRelay(`wss://r${i}.example`, "open");
-    for (let i = 0; i < 12; i++) s.w.__roSplashRelay(`wss://r${i}.example`, "up");
-    expect(s.dots()).toHaveLength(8);
-    expect(s.status()).toBe("Connected 8 of 8");
-  });
-
-  it("reports after the splash is gone are ignored", () => {
-    const s = boot();
-    s.w.__roHideSplash();
-    vi.advanceTimersByTime(700);
-    expect(() => s.w.__roSplashRelay(A, "open")).not.toThrow();
+  it("the page's styles and script no longer mention the ring", () => {
+    expect(HTML).not.toMatch(/ro-splash-ring|ro-splash-status|__roSplashRelay|roSplashPop|--ro-dot/);
   });
 });
 
 describe("the splash knocks on the fast relays itself, from the first frame", () => {
-  // The app opens its relays only once its JavaScript runs, which is also when
-  // it mounts and the splash lifts, so its reports alone could never light a
-  // dot during the wait people actually see (measured on the production build
-  // through a throttled proxy: "Connecting 0 of 4" at the moment of hand-off).
+  // A warm-up: the app opens its relays only once its JavaScript runs, so the
+  // launch screen dials the fast ones early and hangs up as each answers.
   const FAST = (() => {
     const src = readFileSync(path.resolve(import.meta.dirname, "lib/nostr.ts"), "utf8");
     const body = src.match(/export const FAST_RELAYS = \[([^\]]*)\]/)![1];
     return [...body.matchAll(/"(wss:\/\/[^"]+)"/g)].map((m) => m[1]);
   })();
 
-  it("dials the app's fast relays (FAST_RELAYS), one dot each", () => {
-    const s = boot({ sockets: true });
+  it("dials the app's fast relays (FAST_RELAYS)", () => {
+    boot({ sockets: true });
     expect(FAST.length).toBeGreaterThan(0);
     expect(FakeSocket.all.map((x) => x.url)).toEqual(FAST);
-    expect(s.dots()).toHaveLength(FAST.length);
-    expect(s.status()).toBe(`Connecting 0 of ${FAST.length}`);
   });
 
-  it("a dot lights when its socket really opens, and the socket is closed straight after", () => {
-    const s = boot({ sockets: true });
+  it("a socket is closed as soon as it really opens", () => {
+    boot({ sockets: true });
+    expect(FakeSocket.all[1].closed).toBe(false);
     FakeSocket.all[1].open();
-    expect(s.lit()).toBe(1);
-    expect(s.dots()[1].classList.contains("on")).toBe(true);
     expect(FakeSocket.all[1].closed).toBe(true);
-    expect(s.status()).toBe(`Connected 1 of ${FAST.length}`);
+    expect(FakeSocket.all[0].closed).toBe(false);
   });
 
-  it("a relay that errors stays unlit", () => {
-    const s = boot({ sockets: true });
+  it("a relay that errors is hung up on", () => {
+    boot({ sockets: true });
     FakeSocket.all[0].onerror?.();
-    expect(s.lit()).toBe(0);
+    expect(FakeSocket.all[0].closed).toBe(true);
   });
 
   it("never dials a relay you blocked", () => {
@@ -190,11 +163,9 @@ describe("the splash knocks on the fast relays itself, from the first frame", ()
     expect(FakeSocket.all.every((x) => x.closed)).toBe(true);
   });
 
-  it("the app's own reports of the same relays don't add dots", () => {
-    const s = boot({ sockets: true });
-    s.w.__roSplashRelay(FAST[0], "open");
-    s.w.__roSplashRelay(FAST[0], "up");
-    expect(s.dots()).toHaveLength(FAST.length);
-    expect(s.lit()).toBe(1);
+  it("with no WebSocket in the browser the launch screen still works", () => {
+    const s = boot();
+    vi.advanceTimersByTime(400);
+    expect(s.splash()!.classList.contains("ro-splash-waiting")).toBe(true);
   });
 });
