@@ -35,15 +35,15 @@ describe("iOS launch images", () => {
   });
 
   it("is the first frame of the splash: the brand canvas with the mark centred", async () => {
-    expect(html).toMatch(/#ro-splash\{[^}]*background:#0a0a0a/);
-    expect(CANVAS).toBe("#0a0a0a");
+    expect(html).toMatch(/#ro-splash\{[^}]*background:#0a0c10/);
+    expect(CANVAS).toBe("#0a0c10");
     const [w, h, s] = [402, 874, 3];
     const img = sharp(path.join(root, "client/public/splash", fileName(w, h, s)));
     const { width, height } = await img.metadata();
     expect([width, height]).toEqual([w * s, h * s]);
     const { data } = await img.raw().toBuffer({ resolveWithObject: true });
     const px = (x: number, y: number) => [data[(y * w * s + x) * 3], data[(y * w * s + x) * 3 + 1], data[(y * w * s + x) * 3 + 2]];
-    expect(px(0, 0)).toEqual([10, 10, 10]); // corner: the canvas
+    expect(px(0, 0)).toEqual([10, 12, 16]); // corner: the canvas, the app's own dark background
     // The mark is 54 CSS px, centred, drawn on a 100-unit grid (Otto: the
     // open ring). The ring's left side is solid at (20, 50) of that grid (the
     // exact centre is the empty face).

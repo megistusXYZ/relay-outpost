@@ -7,6 +7,8 @@
 /* No hop here: the story's own moves are enough, and a hop mid-glide would land it off the mark. */
 .launch-story .rl[data-s=icon] .rl-m{animation:none}
 .launch-story[data-phase=landing]{background:transparent;transition:background-color .5s linear;pointer-events:none}
-.launch-story[data-phase=landing] .launch-story-logo{transition:transform .7s cubic-bezier(.65,0,.2,1),opacity .2s linear .5s;opacity:0}
+/* The face stays whole until it has landed, then goes in a blink: fading earlier showed two faces a
+   few pixels apart for the end of the glide. */
+.launch-story[data-phase=landing] .launch-story-logo{transition:transform .7s cubic-bezier(.65,0,.2,1),opacity .1s linear .72s;opacity:0}
 .launch-story[data-phase=skipping]{opacity:0;transition:opacity .22s linear}
 @media (prefers-reduced-motion:reduce){.launch-story,.launch-story-logo{transition:none!important}}

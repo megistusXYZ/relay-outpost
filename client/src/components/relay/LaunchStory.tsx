@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { choseLite } from "@/hooks/use-perf-mode";
 import { RelayLogo, type RelayState } from "./RelayLogo";
 import { logoStorySeen, markLogoStorySeen } from "./logo-session";
+import { whenLaunchScreenLetsGo } from "./launch-screen";
 import "./launch-story.css";
 
 /**
@@ -25,8 +26,9 @@ import "./launch-story.css";
 
 /** The story, each in ms after the one before: the name is written, the face becomes the O, it folds, it lands. */
 export const LAUNCH_STEPS = { relay: 750, full: 950, fold: 1150, land: 700 } as const;
-/** The glide to the app's logo, and the quick fade of a skip. Must match launch-story.css. */
+/** The glide to the app's logo, the moment it then rests on it before it is taken away, and the quick fade of a skip. Must match launch-story.css. */
 const GLIDE_MS = 700;
+const REST_MS = 140;
 const SKIP_MS = 220;
 /** Where the app's own logo is: the phone's top bar, the desktop rail, or the classic sidebar. */
 const APP_LOGO = '[data-testid="button-mobile-sidebar-trigger"] [data-testid="otto-mark"], [data-testid="rail-logo"] [data-testid="otto-mark"], [data-sidebar="header"] [data-testid="otto-mark"]';
@@ -70,7 +72,7 @@ export function LaunchStory() {
       setFlight({ transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${k.toFixed(4)})` });
     }
     go("landing");
-    later(() => go("done"), GLIDE_MS + 60);
+    later(() => go("done"), GLIDE_MS + REST_MS);
   }, [go, later]);
 
   const skip = useCallback(() => {
@@ -92,23 +94,15 @@ export function LaunchStory() {
       later(() => setStage("icon"), LAUNCH_STEPS.relay + LAUNCH_STEPS.full + LAUNCH_STEPS.fold);
       later(land, LAUNCH_STEPS.relay + LAUNCH_STEPS.full + LAUNCH_STEPS.fold + LAUNCH_STEPS.land);
     };
-    // The story begins when the loading screen lets go (it marks itself as hiding, then removes itself).
-    const splash = document.getElementById("ro-splash");
-    const gone = () => !splash || !splash.isConnected || splash.dataset.hiding === "1";
-    let watch: MutationObserver | undefined;
-    if (gone()) begin();
-    else {
-      watch = new MutationObserver(() => { if (gone()) { watch?.disconnect(); begin(); } });
-      watch.observe(splash!, { attributes: true });
-      if (splash!.parentNode) watch.observe(splash!.parentNode, { childList: true });
-      later(begin, 10_000); // a loading screen that never lets go has its own Reload; this layer must not outlast it forever
-    }
+    // The story begins when the loading screen lets go (components/relay/launch-screen.ts). A loading
+    // screen that never lets go has its own Reload; this layer must not outlast it forever.
+    const stopWaiting = whenLaunchScreenLetsGo(begin);
     // A key or a turn of the wheel skips it, as a tap does (the layer's own onPointerDown).
     const onSkip = () => skip();
     window.addEventListener("keydown", onSkip, { passive: true });
     window.addEventListener("wheel", onSkip, { passive: true });
     const pending = timers.current;
-    return () => { watch?.disconnect(); window.removeEventListener("keydown", onSkip); window.removeEventListener("wheel", onSkip); pending.forEach((t) => window.clearTimeout(t)); };
+    return () => { stopWaiting(); window.removeEventListener("keydown", onSkip); window.removeEventListener("wheel", onSkip); pending.forEach((t) => window.clearTimeout(t)); };
   }, [plays, land, skip, later]);
 
   if (phase === "done" || typeof document === "undefined") return null;

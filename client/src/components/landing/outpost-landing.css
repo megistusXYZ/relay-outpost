@@ -208,16 +208,28 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 @media (hover: hover) { .outpost-landing .meet-btn:hover { color: var(--ink); border-color: var(--ink); } }
 .outpost-landing .meet-btn[aria-pressed="true"] { background: var(--btn); color: var(--btnink); border-color: transparent; }
 @media (prefers-reduced-motion: reduce) { .outpost-landing .meet-btn { transition: none; } }
-.outpost-landing .ol-header { --lg-top: 46vh; --lg-k: 4.4; }
-@supports (height: 1svh) { .outpost-landing .ol-header { --lg-top: 46svh; } }
+/* The intro moves the logo's pixels only. Its place in the layout is always the header's left
+   edge; --lg-dx/--lg-dy (set by landing-logo.ts before the first paint) carry it to the middle
+   of the screen, where the launch screen's face is, and --lg-k scales it up. So nothing in the
+   page is laid out again while it grows or glides home, and the glide stays smooth while the
+   page is still busy loading.
+     is-arriving  the first moments: the logo IS the launch screen's face (same place, --lg-k0
+                  makes it the same size), so that screen fades over one face, not two
+     is-intro     it grows to --lg-k, writes its name, becomes the O
+     (neither)    it glides to its resting place */
+.outpost-landing .ol-header { --lg-k: 4.4; --lg-k0: 1.64; --lg-dx: 50vw; --lg-dy: 46vh; }
 @media (max-width: 899px) { .outpost-landing .ol-header { --lg-k: 3.1; } }
 @media (max-width: 519px) { .outpost-landing .ol-header { --lg-k: 2.15; } }
 @media (max-width: 359px) { .outpost-landing .ol-header { --lg-k: 1.8; } }
-.outpost-landing .lg-btn { position: absolute; left: var(--lg-x); top: 50%; z-index: 3; display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0; border-radius: 10px; color: var(--ink); text-decoration: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transform: translate(0, -50%) scale(1); transform-origin: center; transition: left 0.8s cubic-bezier(0.65, 0, 0.2, 1), top 0.8s cubic-bezier(0.65, 0, 0.2, 1), transform 0.8s cubic-bezier(0.65, 0, 0.2, 1); }
+.outpost-landing .lg-btn { position: absolute; left: var(--lg-x); top: 50%; z-index: 3; display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0; border-radius: 10px; color: var(--ink); text-decoration: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transform: translate(0, -50%) scale(1); transform-origin: center; transition: transform 0.8s cubic-bezier(0.65, 0, 0.2, 1); }
 .outpost-landing .lg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-.outpost-landing .ol-header.is-intro .lg-btn { left: 50%; top: var(--lg-top); transform: translate(-50%, -50%) scale(var(--lg-k)); }
-.outpost-landing .ol-header.is-intro .lg-btn .rl { animation: ol-logo-in 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
-@keyframes ol-logo-in { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: none; } }
+.outpost-landing .ol-header.is-intro .lg-btn { transform: translate(calc(var(--lg-dx) - 50%), calc(var(--lg-dy) - 50%)) scale(var(--lg-k)); transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); }
+.outpost-landing .ol-header.is-intro.is-arriving .lg-btn { transform: translate(calc(var(--lg-dx) - 50%), calc(var(--lg-dy) - 50%)) scale(var(--lg-k0)); transition: none; }
+/* No hop in the intro: the name starts to write before a hop would finish, which cut it off in mid-air. */
+.outpost-landing .ol-header.is-intro .rl[data-s="icon"] .rl-m { animation: none; }
+/* With no launch screen to take over from, the logo fades in where it stands. */
+.outpost-landing .ol-header.is-intro.is-cold .lg-btn .rl { animation: ol-logo-in 0.3s linear both; }
+@keyframes ol-logo-in { from { opacity: 0; } to { opacity: 1; } }
 /* The landing's own face stands in the logo's mark. Its ring carries the weight (9, or 11 as the O
    so it matches the letters), and its eyes go away while it is a letter. */
 .outpost-landing .otto .ring { stroke-width: 9; }
@@ -232,7 +244,7 @@ html.theming::view-transition-new(root) { animation: ol-reveal 0.7s cubic-bezier
 .outpost-landing.is-landing > :not(header), .outpost-landing.is-landing .lg-hide { transition: opacity 0.6s linear 0.15s; }
 @media (prefers-reduced-motion: reduce) {
   .outpost-landing .lg-btn, .outpost-landing .rl .otto .ring, .outpost-landing .rl .otto .look, .outpost-landing.is-landing > :not(header), .outpost-landing.is-landing .lg-hide { transition: none; }
-  .outpost-landing .ol-header.is-intro .lg-btn .rl { animation: none; }
+  .outpost-landing .ol-header.is-intro.is-cold .lg-btn .rl { animation: none; }
 }
 
 /* The headline decodes once: each letter keeps its place and kerning (only its

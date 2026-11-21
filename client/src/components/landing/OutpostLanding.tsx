@@ -21,7 +21,7 @@ import { InviteGreeting } from "@/components/landing/InviteGreeting";
 import { loadSignupDraft } from "@/lib/account-draft";
 import { trackSignupEvent } from "@/lib/signup-telemetry";
 import { RelayLogo } from "@/components/relay/RelayLogo";
-import { useLandingLogo, useNoRoomForName } from "./landing-logo";
+import { useIntroPlace, useLandingLogo, useNoRoomForName } from "./landing-logo";
 import { RelayMeet } from "./RelayMeet";
 import "./outpost-landing.css";
 
@@ -385,6 +385,10 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
   // name in the middle of the screen while the page waits, then lands here.
   const noRoomForName = useNoRoomForName();
   const logo = useLandingLogo(scrolled || noRoomForName ? "icon" : "full", choseLite());
+  // During the intro the logo stands where the launch screen's face is, by transform alone (landing-logo.ts).
+  const headerRef = useRef<HTMLElement>(null);
+  const logoBtnRef = useRef<HTMLAnchorElement>(null);
+  useIntroPlace(headerRef, logoBtnRef, logo.intro);
   // As it writes its name, the face looks at it.
   useEffect(() => { if (logo.stage === "relay") gaze(-4, 0, 1100); }, [logo.stage, gaze]);
 
@@ -460,9 +464,9 @@ export function OutpostLanding({ onLaunch }: { onLaunch: () => void }) {
       {/* At the top of the page the header is clear, so the hero has no edge above it;
           its glass and hairline come in once the page scrolls (owner, 2026-11-18). */}
       <div ref={topRef} aria-hidden="true" style={{ height: 1, marginBottom: -1 }} />
-      <header className={`ol-header${scrolled ? " scrolled" : ""}${logo.intro ? " is-intro" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
+      <header ref={headerRef} className={`ol-header${scrolled ? " scrolled" : ""}${logo.intro ? " is-intro" : ""}${logo.arriving ? " is-arriving" : ""}${logo.cold ? " is-cold" : ""}`} style={{ position: "sticky", top: 0, zIndex: 20 }}>
         <div className="lg-in" style={{ maxWidth: 1120, margin: "0 auto", padding: "0 clamp(16px, 5vw, 24px)", height: 64, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12 }}>
-          <a href="#top" className="lg-btn" data-testid="landing-logo"
+          <a ref={logoBtnRef} href="#top" className="lg-btn" data-testid="landing-logo"
             onClick={(e) => { toTop(e); logo.onClick(); }}
             onPointerEnter={(e) => logo.onPointerEnter(e.pointerType)}
             onPointerLeave={logo.onPointerLeave}>
