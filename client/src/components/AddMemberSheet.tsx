@@ -182,7 +182,7 @@ export function AddMemberSheet({
           <Button
             onClick={handleAdd}
             disabled={!pubkey || adding}
-            className="h-8 text-xs gap-1.5 bg-brand hover:bg-brand text-white"
+            className="h-8 text-xs gap-1.5"
             data-testid="button-add-member-confirm"
           >
             {adding ? (

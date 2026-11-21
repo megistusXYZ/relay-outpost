@@ -96,7 +96,7 @@ export default function KeyBackup() {
           <div className="space-y-3" data-testid="key-page-unlock">
             <p className="text-xs text-muted-foreground">Unlock the copy kept here first.</p>
             {account.passkey && (
-              <Button onClick={unlockWithTouch} disabled={working} className="w-full min-h-11 gap-2 bg-brand text-white hover:bg-brand" data-testid="key-page-unlock-passkey">
+              <Button onClick={unlockWithTouch} disabled={working} className="w-full min-h-11 gap-2" data-testid="key-page-unlock-passkey">
                 {working ? <RelayOutpostInlineLoader className="h-4 w-4" /> : <Fingerprint className="h-4 w-4" />}
                 Unlock with {platform.name}
               </Button>

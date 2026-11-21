@@ -136,7 +136,7 @@ function ShareEventForm({ ce, onClose }: { ce: CalendarEventData; onClose: () =>
         <Button
           onClick={handleShare}
           disabled={isPublishing || !content.trim()}
-          className="flex-1 bg-brand text-white text-xs border-0 font-medium"
+          className="flex-1 text-xs font-medium"
           data-testid="button-confirm-share-event"
         >
           {isPublishing ? (

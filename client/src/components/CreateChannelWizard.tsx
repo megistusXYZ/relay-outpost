@@ -368,7 +368,7 @@ export function CreateChannelWizard({
       {step === "details" ? (
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 bg-brand hover:bg-brand text-white"
+          className="h-8 text-xs gap-1.5"
           onClick={() => setStep("type")}
           disabled={!name.trim()}
           data-testid="wizard-next"
@@ -378,7 +378,7 @@ export function CreateChannelWizard({
       ) : (
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 bg-brand hover:bg-brand text-white"
+          className="h-8 text-xs gap-1.5"
           onClick={handleCreate}
           disabled={!name.trim() || creating}
           data-testid="wizard-create"

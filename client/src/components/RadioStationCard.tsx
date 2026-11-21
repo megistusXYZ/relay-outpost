@@ -117,7 +117,7 @@ export function RadioStationCard({
         <button
           type="button"
           onClick={onListen}
-          className="inline-flex items-center justify-center gap-1.5 h-11 w-11 sm:w-auto sm:px-4 rounded-full bg-brand hover:bg-brand/90 text-white text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex items-center justify-center gap-1.5 h-11 w-11 sm:w-auto sm:px-4 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={playingThis ? `Pause ${name}` : `Listen to ${name}`}
           data-testid="button-radio-listen"
         >

@@ -149,7 +149,7 @@ export function EventActionBar({
         disabled={busy}
         aria-pressed={going}
         className={`${pill} ${going
-          ? "bg-primary text-primary-foreground dark:bg-brand dark:text-white"
+          ? "bg-primary text-primary-foreground"
           : "bg-primary/10 text-primary dark:text-brand hover:bg-primary/20"}`}
         data-testid="button-rsvp-going"
       >

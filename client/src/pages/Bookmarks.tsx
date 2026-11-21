@@ -632,7 +632,7 @@ export default function Bookmarks({ embedded = false }: { embedded?: boolean } =
                     size="sm"
                     className={`gap-1 sm:gap-1.5 text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 transition-all duration-200 ${
                       isActive
-                        ? "bg-brand dark:bg-brand/15 text-brand border border-brand/40 dark:border-brand/30 shadow-[0_0_8px_rgba(255,255,255,0.15)] dark:shadow-[0_0_8px_rgba(255,255,255,0.2)] no-default-hover-elevate"
+                        ? ""
                         : "text-muted-foreground/70"
                     }`}
                     onClick={() => setActiveFilter(f.key)}

@@ -131,7 +131,7 @@ export function InviteFriend({
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleCopy}
-            className="min-h-11 flex-1 bg-brand text-white hover:bg-brand"
+            className="min-h-11 flex-1"
             data-testid="button-invite-copy-cta"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
