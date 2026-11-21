@@ -224,3 +224,63 @@ describe("no status colour is left serving both themes", () => {
     }
   });
 });
+
+/**
+ * Ember is a fill in a few places (a Listen button, a "Join Live" link), and
+ * `--brand` is a dark Ember in light mode and a LIGHT Ember in dark mode. White
+ * text reads on the first and not on the second, so `bg-brand text-white` is
+ * right in one theme only. `text-primary-foreground` flips with the theme
+ * (white in light, the dark canvas colour in dark) and reads on both.
+ *
+ * A primary button is not an Ember fill at all: it is the shared `Button`,
+ * which is ink. This guard is for the fills that stay Ember on purpose.
+ */
+describe("words on an Ember fill read in both themes", () => {
+  const css = readFileSync(join(SRC, "index.css"), "utf8");
+  const light = css.slice(0, css.indexOf(".dark {"));
+  const dark = css.slice(css.indexOf(".dark {"));
+  const token = (block: string, name: string) => {
+    const m = block.match(new RegExp(`--${name}:\\s*([0-9.]+\\s+[0-9.]+%\\s+[0-9.]+%)`));
+    expect(m, `--${name} not found`).not.toBeNull();
+    return hslTripleToRgb(m![1]);
+  };
+  const WHITE: [number, number, number] = [255, 255, 255];
+
+  /** A solid (or nearly solid) Ember fill and white words in the same class list. */
+  const EMBER_FILL = /(?<![\w-])(?:[a-z-]+:)*bg-brand(?:\/(?:[7-9]\d|100))?(?![\w/-])/;
+  const WHITE_TEXT = /(?<![\w-])(?:[a-z-]+:)*text-white(?:\/\d+)?(?![\w-])/;
+  const whiteOnEmber = (src: string) =>
+    src.split("\n").flatMap((line, i) => (EMBER_FILL.test(line) && WHITE_TEXT.test(line) ? [i + 1] : []));
+
+  it("white on Ember really does fail in dark, which is the reason for the rule", () => {
+    const r = contrast(WHITE, token(dark, "brand"));
+    expect(r, `white on dark --brand measured ${r.toFixed(2)}:1; if this now PASSES, --brand changed and this rule may be obsolete`).toBeLessThan(4.5);
+  });
+
+  it("text-primary-foreground on Ember passes in both themes", () => {
+    for (const [name, block] of [["light", light], ["dark", dark]] as const) {
+      const r = contrast(token(block, "primary-foreground"), token(block, "brand"));
+      expect(r, `text-primary-foreground on bg-brand measured ${r.toFixed(2)}:1 in ${name}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("the check can fail: it catches each spelling that shipped and leaves tints alone", () => {
+    expect(whiteOnEmber(`className="h-8 bg-brand hover:bg-brand text-white"`)).toEqual([1]);
+    expect(whiteOnEmber(`"bg-primary text-primary-foreground dark:bg-brand dark:text-white"`)).toEqual([1]);
+    expect(whiteOnEmber(`"bg-primary dark:bg-brand/90 hover:bg-primary/90 text-white text-xs"`)).toEqual([1]);
+    expect(whiteOnEmber(`"bg-brand text-primary-foreground"`)).toEqual([]);
+    expect(whiteOnEmber(`"bg-brand/20 text-white"`)).toEqual([]);
+    expect(whiteOnEmber(`"bg-brand-strong/10 text-white"`)).toEqual([]);
+  });
+
+  it("no screen puts white words on an Ember fill", () => {
+    const hits: string[] = [];
+    for (const file of tsxFiles(SRC)) {
+      for (const n of whiteOnEmber(readFileSync(file, "utf8"))) hits.push(`${rel(file)}:${n}`);
+    }
+    expect(
+      hits,
+      `White on Ember is about 2.3:1 in dark mode. A primary button is the shared Button with no colour classes (ink);\na selected tab or chip is \`bg-foreground text-background\`; a fill that stays Ember takes \`text-primary-foreground\`:\n${hits.join("\n")}`,
+    ).toEqual([]);
+  });
+});

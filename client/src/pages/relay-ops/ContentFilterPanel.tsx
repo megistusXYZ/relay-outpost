@@ -22,7 +22,7 @@ import type { ProfileInfo } from "./shared";
 const QUICK_KINDS = [1, 7, 9735, 6, 30023, 0, 1984];
 
 const pill = (on: boolean) =>
-  `min-h-[40px] px-3.5 rounded-full text-[13px] font-medium transition-colors ${on ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`;
+  `min-h-[40px] px-3.5 rounded-full text-[13px] font-medium transition-colors ${on ? "bg-foreground text-background" :"bg-black/[0.05] dark:bg-white/[0.06] text-foreground/80 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"}`;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -111,7 +111,7 @@ export function FilterPanel(p: FilterPanelProps) {
             return (
               <li key={k.kind}>
                 <button type="button" role="option" aria-selected={on} onClick={() => toggleKind(k.kind)} className="w-full flex items-center gap-3 min-h-[44px] px-2 rounded-lg text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.05]" data-testid={`ops-filter-kind-${k.kind}`}>
-                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md border ${on ? "bg-brand border-brand text-white" : "border-black/20 dark:border-white/25"}`}>{on && <Check className="w-3.5 h-3.5" aria-hidden="true" />}</span>
+                  <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md border ${on ? "bg-foreground border-foreground text-background" : "border-black/20 dark:border-white/25"}`}>{on && <Check className="w-3.5 h-3.5" aria-hidden="true" />}</span>
                   <span className="min-w-0 flex-1 truncate">
                     <span className="block text-[14px] truncate">{plainKindName(k.kind)}</span>
                     {plainKindName(k.kind) !== k.label && <span className="block text-[12px] text-muted-foreground truncate">{k.label}</span>}
@@ -185,7 +185,7 @@ export function FilterPanel(p: FilterPanelProps) {
   const trigger = (
     <Button type="button" variant="outline" className="relative h-11 w-11 p-0 sm:h-10 sm:w-auto sm:px-3.5 rounded-full shrink-0 text-[13px]" aria-label={p.activeCount ? `Filter — ${p.activeCount} on` : "Filter"} data-active={p.activeCount > 0} data-testid="ops-events-filter" onClick={p.wide ? undefined : () => setOpen(true)}>
       <span className="sr-only sm:not-sr-only">Filter</span>
-      {p.activeCount > 0 && <span className="absolute -top-1 -right-1 sm:static sm:ml-1.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-brand px-1 text-[12px] font-semibold text-white">{p.activeCount}</span>}
+      {p.activeCount > 0 && <span className="absolute -top-1 -right-1 sm:static sm:ml-1.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-primary px-1 text-[12px] font-semibold text-primary-foreground">{p.activeCount}</span>}
       <svg className="w-4 h-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
     </Button>
   );

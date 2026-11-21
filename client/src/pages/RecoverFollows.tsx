@@ -159,7 +159,7 @@ function RecoverFollowsCard() {
               <p className="text-sm leading-relaxed text-muted-foreground">
                 A fuller follow list ({bestCount}) still exists on relays. Restore republishes it with a fresh timestamp so it overrides the current {newestCount}-follow list everywhere.
               </p>
-              <Button onClick={() => setShowConfirm(true)} disabled={restoring} className="w-full min-h-11 gap-2 bg-brand text-white hover:bg-brand" data-testid="button-recover-restore">
+              <Button onClick={() => setShowConfirm(true)} disabled={restoring} className="w-full min-h-11 gap-2" data-testid="button-recover-restore">
                 <RotateCcw className={`h-4 w-4 ${restoring ? "animate-spin" : ""}`} />
                 {restoring ? "Restoring…" : `Restore ${bestCount} follows`}
               </Button>

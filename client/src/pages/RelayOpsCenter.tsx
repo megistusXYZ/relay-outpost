@@ -458,7 +458,7 @@ export default function RelayOpsCenter({ relayUrl: propRelayUrl }: { relayUrl?: 
                   {s.label}
                   {showFeedbackBadge && (
                     <span
-                      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[11px] leading-none font-semibold"
+                      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-xs leading-none font-semibold tabular-nums"
                       data-testid="badge-tab-feedback-unread"
                     >
                       {inboxCount > 9 ? "9+" : inboxCount}

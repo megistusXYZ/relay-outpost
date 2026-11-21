@@ -294,7 +294,7 @@ export default function TrustReviews() {
           aria-selected={tab === "about"}
           onClick={() => setTab("about")}
           className={`flex-1 min-h-11 rounded-md text-sm font-medium transition-colors ${
-            tab === "about" ? "bg-brand text-white shadow-sm" : "text-muted-foreground/70 hover:text-foreground"
+            tab === "about" ? "bg-foreground text-background shadow-sm" : "text-muted-foreground/70 hover:text-foreground"
           }`}
           data-testid="tab-about-you"
         >
@@ -305,7 +305,7 @@ export default function TrustReviews() {
           aria-selected={tab === "by"}
           onClick={() => setTab("by")}
           className={`flex-1 min-h-11 rounded-md text-sm font-medium transition-colors ${
-            tab === "by" ? "bg-brand text-white shadow-sm" : "text-muted-foreground/70 hover:text-foreground"
+            tab === "by" ? "bg-foreground text-background shadow-sm" : "text-muted-foreground/70 hover:text-foreground"
           }`}
           data-testid="tab-by-you"
         >

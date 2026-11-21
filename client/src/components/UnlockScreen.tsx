@@ -430,7 +430,7 @@ export function UnlockScreen({ account, onUseDifferentAccount, onForget }: Props
               <Button
                 onClick={handlePasskeyUnlock}
                 disabled={isPasskeyWorking || isWorking}
-                className="w-full text-xs font-brand uppercase tracking-widest bg-brand text-white hover:bg-brand"
+                className={`w-full text-xs font-brand uppercase tracking-widest ${primaryBtnCls}`}
                 data-testid="button-unlock-passkey"
               >
                 {isPasskeyWorking ? <RelayOutpostInlineLoader className="w-4 h-4 mr-2" /> : <Fingerprint className="w-4 h-4 mr-2" />}

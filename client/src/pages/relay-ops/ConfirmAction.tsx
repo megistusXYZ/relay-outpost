@@ -51,7 +51,7 @@ export function ConfirmAction({ pending, relayName, canRestore, progress, onCanc
           <div className="flex flex-wrap gap-1.5">
             {REMOVAL_REASONS.map((r) => (
               <button key={r} type="button" onClick={() => setPick(pick === r ? undefined : r)} aria-pressed={pick === r} data-testid={`ops-content-reason-${r.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`h-9 px-3 rounded-full text-[13px] font-medium ${pick === r ? "bg-brand text-white" : "bg-black/[0.05] dark:bg-white/[0.06]"}`}>
+                className={`h-9 px-3 rounded-full text-[13px] font-medium ${pick === r ? "bg-foreground text-background" :"bg-black/[0.05] dark:bg-white/[0.06]"}`}>
                 {r}
               </button>
             ))}

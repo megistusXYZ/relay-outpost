@@ -987,7 +987,7 @@ function InlineVideo({
             <Link
               href={liveStreamLink}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-brand/90 hover:bg-brand/90 text-white text-xs font-semibold transition-colors"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-brand/90 hover:bg-brand/90 text-primary-foreground text-xs font-semibold transition-colors"
             >
               <MessageCircle className="w-2.5 h-2.5" />
               {liveStreamLink === "/live" ? "Live Streams" : "Join Live"}
@@ -1784,7 +1784,7 @@ function LiveStreamEventCard({ stream }: { stream: LiveEventData }) {
         )}
         <div className="absolute bottom-3 left-3 right-3">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand/90 hover:bg-brand/90 text-white text-xs font-semibold shadow-lg transition-colors">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand/90 hover:bg-brand/90 text-primary-foreground text-xs font-semibold shadow-lg transition-colors">
               <MessageCircle className="w-3.5 h-3.5" />
               {isLive ? "Join Live" : "View Stream"}
             </div>
