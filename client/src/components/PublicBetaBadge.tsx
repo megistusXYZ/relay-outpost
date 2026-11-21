@@ -10,56 +10,28 @@ import { RelayOutpostIcon } from "@/components/RelayOutpostLoader";
 import { useNostrAuth } from "@/contexts/NostrAuthContext";
 
 /**
- * A small, on-brand "Public Beta" stamp that lives on the landing hero and in
- * the app sidebar. Purely informational (never a gate) — clicking it opens a
+ * "Public beta" as a plain status word in the app's sidebar (it was also a
+ * picture of a rubber stamp on the old landing, which went with that landing).
+ * Purely informational (never a gate) — clicking it opens a
  * friendly brief that sets expectations, links to the FAQ / Terms / Privacy,
  * and offers a feedback path. Distinct from the closed-beta code gate in
  * GalaxyWarpOverlay (BETA_GATE_ENABLED).
  */
 export function PublicBetaBadge({
-  variant = "landing",
   className = "",
   onNavigate,
 }: {
-  variant?: "landing" | "sidebar" | "landing-stamp";
+  /** Kept for the one caller: the badge is a plain status word wherever it stands. */
+  variant?: "sidebar";
   className?: string;
   /** Called when a dialog link navigates — lets the host (e.g. sidebar) close itself too. */
   onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
-  // Landing: the stamp art itself as a small, clickable corner badge.
-  if (variant === "landing-stamp") {
-    return (
-      <>
-        <button
-          type="button"
-          data-no-navigate
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
-          className={`group/beta block cursor-pointer transition-transform duration-300 hover:scale-[1.05] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${className}`}
-          aria-label="Public beta — what this means"
-          data-testid="badge-public-beta-stamp"
-        >
-          <img
-            src="/images/landing/public-beta-stamp.webp"
-            srcSet="/images/landing/public-beta-stamp-sm.webp 220w, /images/landing/public-beta-stamp.webp 360w"
-            sizes="110px"
-            alt="Public Beta"
-            draggable={false}
-            className="w-full select-none opacity-[0.6] drop-shadow-[0_2px_12px_rgba(13,15,18,0.22)] transition-opacity duration-300 group-hover/beta:opacity-90"
-          />
-        </button>
-        <PublicBetaDialog open={open} onOpenChange={setOpen} onNavigate={onNavigate} />
-      </>
-    );
-  }
-
   const base =
     "inline-flex items-center gap-1.5 rounded-full border leading-none transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring font-medium";
-  const tone =
-    variant === "landing"
-      ? "border-brand/30 bg-brand/[0.1] px-3 py-1.5 text-[10px] tracking-[0.22em] text-brand backdrop-blur-sm hover:border-brand/50 hover:bg-brand/[0.16] -rotate-[1.5deg]"
-      : "!border-0 !rounded-none bg-transparent px-0 py-0.5 text-xs text-muted-foreground hover:text-foreground";
+  const tone = "!border-0 !rounded-none bg-transparent px-0 py-0.5 text-xs text-muted-foreground hover:text-foreground";
 
   return (
     <>
@@ -71,7 +43,6 @@ export function PublicBetaBadge({
         aria-label="Public beta — what this means"
         data-testid="badge-public-beta"
       >
-        {variant === "landing" && <span className="rounded-full bg-brand/90 h-1.5 w-1.5" aria-hidden />}
         Public beta
       </button>
       <PublicBetaDialog open={open} onOpenChange={setOpen} />

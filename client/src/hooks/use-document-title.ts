@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { publicPageTitle } from "@shared/public-pages";
 
-const DEFAULT_TITLE = "Relay Outpost | Beyond the Algorithm";
+/** With no page title the tab says what the page's own <title> says (shared/public-pages.ts): one line for the site, everywhere. */
+const DEFAULT_TITLE = publicPageTitle("/");
 
 /** The tab's title: the unread count, the page, and the app's name once. */
 export function documentTitleFor(title: string | undefined | null, unreadCount: number): string {

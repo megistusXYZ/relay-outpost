@@ -39,11 +39,25 @@
   ],
   "screenshots": [
     {
-      "src": "/og-image.png",
-      "sizes": "1200x630",
+      "src": "/screenshots/phone-landing.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Relay Outpost: the next phase of the internet"
+    },
+    {
+      "src": "/screenshots/phone-home.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home: posts from the people you follow"
+    },
+    {
+      "src": "/screenshots/desktop-home.png",
+      "sizes": "2560x1600",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Relay Outpost: the next phase of the internet"
+      "label": "Home on a desktop: posts from the people you follow"
     }
   ]
 }
