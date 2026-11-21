@@ -139,6 +139,7 @@ import { AddRssFeedDialog, FeedPreviewPanel } from "@/components/rss/AddRssFeedD
 import { TILE_TITLE } from "@/components/discover-tile-title";
 import { GuestWall } from "@/components/GuestWall";
 import { NewsStoryRow } from "@/components/news/NewsStoryRow";
+import { feedFreshFor } from "@shared/rss-brief";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -1718,6 +1719,14 @@ function useStableHero(hero: MergedItem<RSSItem> | null, present: MergedItem<RSS
 const NEWS_LANE_KEY = "ro_news_lane";
 
 /** One feed through the server's RSS proxy. Throws on failure, so react-query retries and reports it. */
+/**
+ * A feed Discover fetched is the brief one: headlines, no article text
+ * (shared/rss-brief.ts). It shares this page's cache entry, so here it is
+ * never fresh: the headlines paint from it at once and the full feed is asked
+ * for straight away, because this page opens the articles.
+ */
+const feedStaleTime = (query: { state: { data?: unknown } }) => feedFreshFor(query.state.data);
+
 async function fetchRssFeed(url: string): Promise<RSSFeedData> {
   const res = await fetch(`/api/rss?url=${encodeURIComponent(url)}`);
   if (!res.ok) {
@@ -1859,7 +1868,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
       return res.json();
     },
     enabled: !isAllMode && !!activeFeedUrl,
-    staleTime: 10 * 60 * 1000,
+    staleTime: feedStaleTime,
     gcTime: 30 * 60 * 1000,
     retry: 1 });
 
@@ -1939,7 +1948,7 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
         queryKey: ["/api/rss", f.url],
         queryFn: () => fetchRssFeed(f.url),
         enabled: isAllMode && !!f.url && shouldFetch,
-        staleTime: 10 * 60 * 1000,
+        staleTime: feedStaleTime,
         gcTime: 30 * 60 * 1000,
         retry: 1,
       };
