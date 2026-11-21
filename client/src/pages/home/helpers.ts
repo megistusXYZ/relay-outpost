@@ -65,27 +65,11 @@ export function initialFeedMode(saved: string | null | undefined): FeedMode {
   return mode === "open_comms" ? DEFAULT_FEED_MODE : mode;
 }
 
-export type TrendingSelectorSource = "primal" | "archives" | "relay";
-export type ArchivesMetric = "reactions" | "zaps" | "replies" | "reposts";
-
+/** Trending's windows (pages/home/feed-menu.ts has the rules). */
 export const TRENDING_SELECTORS = [
-  { value: "trending_1h", label: "1 hour", group: "time", source: "primal" as TrendingSelectorSource },
-  { value: "trending_4h", label: "4 hours", group: "time", source: "primal" as TrendingSelectorSource },
-  { value: "arc_reactions", label: "Most Reacted", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Top liked & emoji reacted", metric: "reactions" as ArchivesMetric },
-  { value: "arc_zaps", label: "Most Zapped", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Highest zap volume", metric: "zaps" as ArchivesMetric },
-  { value: "arc_replies", label: "Most Replied", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Most discussion", metric: "replies" as ArchivesMetric },
-  { value: "arc_reposts", label: "Most Reposted", group: "archives", source: "archives" as TrendingSelectorSource, desc: "Most amplified", metric: "reposts" as ArchivesMetric },
+  { value: "trending_1h", label: "Last hour" },
+  { value: "trending_4h", label: "Last 4 hours" },
 ] as const;
-
-export const ARCHIVES_RANGES = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
-  { value: "1y", label: "1 year" },
-  { value: "all", label: "All time" },
-] as const;
-
-export type ArchivesRange = typeof ARCHIVES_RANGES[number]["value"];
 
 /**
  * The Polls feed's orders (the feed filter → PollsFeed). Values feed
@@ -106,16 +90,6 @@ export const SAVED_POLL_SHOW_OPTIONS = [
 ] as const;
 
 export type SavedPollShow = typeof SAVED_POLL_SHOW_OPTIONS[number]["value"];
-
-export function isArchivesSelector(selector: string): boolean {
-  return selector.startsWith("arc_");
-}
-
-export function getArchivesMetric(selector: string): ArchivesMetric | null {
-  const sel = TRENDING_SELECTORS.find(s => s.value === selector);
-  if (sel && "metric" in sel) return sel.metric;
-  return null;
-}
 
 export type FeedSortMode = "latest" | "oldest" | "hottest" | "top" | "zap_ranked" | "most_discussed" | "recently_active";
 export type TopTimeWindow = "1h" | "6h" | "24h" | "7d";

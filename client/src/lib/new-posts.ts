@@ -7,7 +7,7 @@
  *     displayed number is).
  *  2. Mode gating — the pill (and its buffer bookkeeping) must exist only on
  *     feed modes that genuinely receive live inserts. Static / fetch-once
- *     surfaces (Trending archives, the Saved macro media feeds, empty states)
+ *     surfaces (Trending, the Saved macro media feeds, empty states)
  *     must never grow a count.
  *  3. Reveal ordering — on ranked feeds (Discover "mix", engagement sorts) a
  *     just-arrived post has no engagement yet and ranks BELOW the fold, so a
@@ -36,7 +36,7 @@ export function formatNewPostsLabel(count: number): string {
  *  - "custom_<id>" (saved feeds — firehose filtered to the feed's authors/tags)
  *
  * Static / not this pipeline (the pill must never show):
- *  - "deep_scan"    Trending/archives — fetch-once charts, no live inserts.
+ *  - "deep_scan"    Trending: a fetch-once ranking, no live inserts.
  *  - "custom_all"   Saved macro media feeds — Home renders the embedded
  *                   Images/Video/Polls feed components, which own their
  *                   content AND their own new-content affordance; Home's

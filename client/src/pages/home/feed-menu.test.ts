@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import {
   FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups,
-  trendingFilter, pickTopBy, pickFrom, trendingSelectorOrDefault, TOP_BY_OPTIONS,
+  trendingFilter, pickFrom, trendingSelectorOrDefault,
   DEFAULT_TRENDING_SELECTOR, startingTrendingSelector, TRENDING_CHART_CHOICES,
 } from "./feed-menu";
 
@@ -106,8 +106,8 @@ describe("the filter shows the current feed's options and nothing else", () => {
     expect(filterGroups({ ...env, feedMode: "open_comms" })).toEqual(["order", "show"]);
   });
 
-  it("Trending: two rows — top by, and from when. It was fourteen buttons and a paragraph", () => {
-    expect(filterGroups({ ...env, feedMode: "deep_scan" })).toEqual(["top-by", "from"]);
+  it("Trending: one row, from when. It was fourteen buttons and a paragraph, then two rows", () => {
+    expect(filterGroups({ ...env, feedMode: "deep_scan" })).toEqual(["from"]);
   });
 
   it("Photos and Videos: one row", () => {
@@ -135,83 +135,68 @@ describe("the filter shows the current feed's options and nothing else", () => {
   });
 });
 
-describe("Trending — 'Top by' and 'From' only offer what exists", () => {
-  it("the plain names: Overall, Likes, Thanks, Replies, Reposts", () => {
-    expect(TOP_BY_OPTIONS.map((o) => o.label)).toEqual(["Overall", "Likes", "Thanks", "Replies", "Reposts"]);
-  });
-
-  it("a chart (likes, zaps, replies, reposts) runs from today back to all time", () => {
-    const f = trendingFilter("arc_zaps", "7d");
-    expect(f.topBy).toBe("arc_zaps");
-    expect(f.from).toBe("7d");
-    expect(f.fromOptions.map((o) => o.label)).toEqual(["Today", "Week", "Month", "Year", "All time"]);
-  });
-
-  it("Overall only exists for the last hour or four hours — so those are its only ranges", () => {
-    const f = trendingFilter("trending_1h", "30d");
-    expect(f.topBy).toBe("overall");
+/**
+ * Trending had five rankings: Overall, and four count charts (likes, thanks,
+ * replies, reposts) over ranges from today to all time. The count charts came
+ * from an outside archive that stopped its service (owner, 2026-11-21). What
+ * is left is the one ranking that still has a source, over its two windows.
+ */
+describe("Trending: one ranking, over the last hour or the last four", () => {
+  it("the filter offers the two windows and nothing else", () => {
+    const f = trendingFilter("trending_1h");
     expect(f.from).toBe("1h");
     expect(f.fromOptions.map((o) => o.label)).toEqual(["Last hour", "Last 4 hours"]);
+    expect(trendingFilter("trending_4h").from).toBe("4h");
+    expect(Object.keys(f).sort()).toEqual(["from", "fromOptions"]);
   });
 
-  it("picking a chart keeps the range; picking Overall keeps its window, starting on four hours", () => {
-    expect(pickTopBy("arc_replies", "trending_1h")).toEqual({ selector: "arc_replies" });
-    expect(pickTopBy("overall", "arc_zaps")).toEqual({ selector: "trending_4h" });
-    expect(pickTopBy("overall", "trending_1h")).toEqual({ selector: "trending_1h" });
-  });
-
-  it("picking a range sets the one thing it means", () => {
+  it("picking a window sets it", () => {
     expect(pickFrom("1h")).toEqual({ selector: "trending_1h" });
     expect(pickFrom("4h")).toEqual({ selector: "trending_4h" });
-    expect(pickFrom("30d")).toEqual({ range: "30d" });
   });
 
-  it("every range offered for a choice is one that choice can show", () => {
-    for (const o of TOP_BY_OPTIONS) {
-      const sel = pickTopBy(o.value, "arc_replies").selector;
-      for (const r of trendingFilter(sel, "today").fromOptions) {
-        const next = pickFrom(r.value);
-        const after = trendingFilter(next.selector ?? sel, next.range ?? "today");
-        expect(after.topBy, `${o.label} → ${r.label}`).toBe(o.value);
-        expect(after.from).toBe(r.value);
-      }
+  it("every window offered is one Trending can show", () => {
+    for (const r of trendingFilter("trending_1h").fromOptions) {
+      expect(trendingFilter(pickFrom(r.value).selector).from, r.label).toBe(r.value);
     }
   });
 
-  it("Trending's own Polls list is gone (polls are under Feeds): a phone still set to it shows the default chart", () => {
-    expect(trendingSelectorOrDefault("polls")).toBe("trending_1h");
-    expect(trendingFilter("polls", "today").topBy).toBe("overall");
-    expect(trendingSelectorOrDefault("something-old")).toBe("trending_1h");
+  it("a phone still set to a chart that is gone shows the default, not an empty page", () => {
+    for (const gone of ["arc_reactions", "arc_zaps", "arc_replies", "arc_reposts", "polls", "something-old"]) {
+      expect(trendingSelectorOrDefault(gone), gone).toBe("trending_1h");
+      expect(trendingFilter(gone).from, gone).toBe("1h");
+    }
     expect(trendingSelectorOrDefault("trending_4h")).toBe("trending_4h");
   });
 });
 
 describe("where Trending opens (owner, 2026-10-03: Overall, last hour)", () => {
-  it("opens on Overall · last hour when nothing was chosen", () => {
+  it("opens on the last hour when nothing was chosen", () => {
     expect(DEFAULT_TRENDING_SELECTOR).toBe("trending_1h");
     expect(startingTrendingSelector(null, null)).toBe("trending_1h");
-    expect(trendingFilter(startingTrendingSelector(null, null), "today")).toMatchObject({ topBy: "overall", from: "1h" });
+    expect(trendingFilter(startingTrendingSelector(null, null)).from).toBe("1h");
   });
 
   it("keeps a choice someone made, the session's own pick first", () => {
-    expect(startingTrendingSelector(null, "arc_replies")).toBe("arc_replies");
-    expect(startingTrendingSelector("trending_4h", "arc_replies")).toBe("trending_4h");
+    expect(startingTrendingSelector(null, "trending_4h")).toBe("trending_4h");
+    expect(startingTrendingSelector("trending_1h", "trending_4h")).toBe("trending_1h");
   });
 
-  it("reads charts saved before the menu changed as the closest chart that exists now", () => {
-    for (const v of ["rising", "hot", "weekly_top"]) expect(startingTrendingSelector(null, v)).toBe("arc_reactions");
-    for (const v of ["mostzapped_4h", "mostzapped_24h", "mostzapped_yesterday", "mostzapped_week"]) expect(startingTrendingSelector(null, v)).toBe("arc_zaps");
+  it("reads a longer window saved long ago as the longest that exists now", () => {
     for (const v of ["trending_12h", "trending_24h"]) expect(startingTrendingSelector(null, v)).toBe("trending_4h");
   });
 
-  it("Settings offers exactly the charts Trending has, Overall · last hour first", () => {
-    expect(TRENDING_CHART_CHOICES.map((c) => c.value)).toEqual(["trending_1h", "trending_4h", "arc_reactions", "arc_zaps", "arc_replies", "arc_reposts"]);
-    for (const c of TRENDING_CHART_CHOICES) expect(trendingSelectorOrDefault(c.value)).toBe(c.value);
-    expect(TRENDING_CHART_CHOICES.map((c) => c.label)).toEqual(["Overall · last hour", "Overall · last 4 hours", "Most liked", "Most thanked", "Most replied", "Most reposted"]);
+  it("a saved chart that no longer exists opens the default", () => {
+    for (const v of ["arc_reactions", "arc_zaps", "arc_replies", "arc_reposts", "rising", "hot", "weekly_top", "mostzapped_4h", "mostzapped_24h", "mostzapped_yesterday", "mostzapped_week"]) {
+      expect(startingTrendingSelector(null, v), v).toBe("trending_1h");
+      expect(startingTrendingSelector(v, "trending_4h"), v).toBe("trending_1h");
+    }
   });
 
-  it("says thanks, not zaps, like the rest of the app", () => {
-    expect(TOP_BY_OPTIONS.map((o) => o.label)).toEqual(["Overall", "Likes", "Thanks", "Replies", "Reposts"]);
+  it("Settings offers exactly the windows Trending has, the last hour first", () => {
+    expect(TRENDING_CHART_CHOICES.map((c) => c.value)).toEqual(["trending_1h", "trending_4h"]);
+    for (const c of TRENDING_CHART_CHOICES) expect(trendingSelectorOrDefault(c.value)).toBe(c.value);
+    expect(TRENDING_CHART_CHOICES.map((c) => c.label)).toEqual(["Last hour", "Last 4 hours"]);
   });
 });
 

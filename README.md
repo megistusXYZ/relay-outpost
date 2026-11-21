@@ -460,8 +460,8 @@ public app's domain, then in the app go to **Settings → Network → Scheduler 
 your server's URL. Server-scheduled posts then go to *your* database instead of the operator's.
 (On-device scheduling never touches any server.)
 
-**Optional external services.** Web of Trust (GrapeRank/Brainstorm), profile search, and
-Nostr Archives are proxied to public services by default — nothing to configure, and the
+**Optional external services.** Web of Trust (GrapeRank/Brainstorm) and profile search
+are proxied to public services by default — nothing to configure, and the
 app degrades gracefully if they're unavailable. Run your own if you'd rather not depend
 on them.
 
