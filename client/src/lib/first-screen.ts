@@ -8,9 +8,12 @@
  * whose signature doesn't hold is dropped, so nothing is shown on the
  * server's word alone.
  *
- * index.html starts the request for a signed-out visitor on "/" while the
- * HTML is still parsing (window.__roFirstScreen); takeFirstScreen() uses that
- * answer when it's there and asks itself when it isn't.
+ * takeFirstScreen() asks for it when the guest feed mounts. index.html used to
+ * start the request for a signed-out visitor on "/" while the HTML was still
+ * parsing (window.__roFirstScreen), and an early answer is still used if one is
+ * there. It stopped on 2026-11-21: that visitor is under the landing, where the
+ * feed is held back (lib/ia-landing.ts `holdHomeForLanding`), so the request
+ * and the signature checks only competed with the landing on a slow phone.
  */
 import { verifyEvent, type Event } from "nostr-tools";
 import { isNote } from "@shared/feed-sample";

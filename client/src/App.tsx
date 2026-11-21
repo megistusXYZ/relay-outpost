@@ -1180,7 +1180,7 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
 
 function useScrollSaver() {}
 
-function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLElement>; scrollHidden: boolean }) {
+function AppContent({ mainRef, scrollHidden, covered }: { mainRef: React.RefObject<HTMLElement>; scrollHidden: boolean; covered: boolean }) {
   // Quiet updates (lib/app-update.ts): detect new builds and move onto them at
   // the next natural boundary. There is no pill; nothing to read or tap.
   useEffect(() => { startAppUpdatePolling(); }, []);
@@ -1197,6 +1197,7 @@ function AppContent({ mainRef, scrollHidden }: { mainRef: React.RefObject<HTMLEl
     pubkey: landingPubkey,
     collapsed: landingCollapsed,
     landed: hasLanded(),
+    covered,
   });
   const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar();
   const { isReading, inline } = useTTS();
@@ -1634,7 +1635,7 @@ function AppLayout() {
       open={sidebarOpen}
       onOpenChange={setSidebarOpen}
     >
-      <AppContent mainRef={mainRef} scrollHidden={scrollHidden} />
+      <AppContent mainRef={mainRef} scrollHidden={scrollHidden} covered={overlayMode === "full" || overlayMode === "cockpit" || overlayMode === "warping_to_cockpit"} />
       {/* Once per session, as the app opens, Relay tells its name over the app and lands on its
           logo (components/relay/LaunchStory). A layer over the shell, never a gate in front of it. */}
       {!!pubkey && <LaunchStory />}

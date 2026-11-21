@@ -141,6 +141,40 @@ describe("holdHomeForLanding: don't start the feed on the way to Chats", () => {
 });
 
 /**
+ * Measured on the live site the day 1.22.0 went out (2026-11-21), slow phone,
+ * cold: the landing took 8 s to show because the feed was started under it:
+ * 101 script files, 25 relay connections, posts, link previews, translations.
+ * Nobody can see the feed there, and a sign-in lands on Chats or the welcome.
+ */
+describe("holdHomeForLanding: no feed under a landing that covers the page", () => {
+  const PK = "b".repeat(64);
+  const arrivedAt = (pathname: string) => ({ pathname, search: "", hash: "" });
+  const visitor = { location: "/", pubkey: null, collapsed: true, landed: false, arrival: arrivedAt("/") };
+
+  it("a signed-out visitor under the landing or the sign-in screen: the feed is held", () => {
+    expect(holdHomeForLanding({ ...visitor, covered: true })).toBe(true);
+  });
+
+  it("…however they got to /: a tap from Discover is covered by the landing too", () => {
+    expect(holdHomeForLanding({ ...visitor, covered: true, arrival: arrivedAt("/discover"), landed: true })).toBe(true);
+  });
+
+  it("a visitor whose page is not covered sees the feed, as before", () => {
+    expect(holdHomeForLanding({ ...visitor, covered: false })).toBe(false);
+    expect(holdHomeForLanding({ ...visitor })).toBe(false);
+  });
+
+  it("someone signed in is never held by it: the sign-in screen is still fading out as they arrive", () => {
+    expect(holdHomeForLanding({ ...visitor, pubkey: PK, covered: true, landed: true })).toBe(false);
+    expect(holdHomeForLanding({ ...visitor, pubkey: PK, covered: true, arrival: arrivedAt("/discover") })).toBe(false);
+  });
+
+  it("only at / itself: a visitor's Discover or Help is not the feed", () => {
+    expect(holdHomeForLanding({ ...visitor, location: "/discover", covered: true })).toBe(false);
+  });
+});
+
+/**
  * Measured on iOS Safari, 2026-10-01: a tab opened on Discover; a new build
  * was out; tapping the Feed tile made the app reload onto it at "/" — and that
  * load was taken for the tab's first arrival and sent to Chats.
