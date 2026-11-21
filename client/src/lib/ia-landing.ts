@@ -132,6 +132,12 @@ export function postAuthLandingPath(
  * location alone: the landing effect runs for the arrival only, so a later tap
  * to "/" (Discover → Feed) in a tab that arrived elsewhere is never
  * redirected, and holding the feed there left the page blank (2026-09-29).
+ *
+ * And hold it for a signed-out visitor while the landing or the sign-in screen
+ * covers the whole page (`covered`). Nobody can see the feed under them, and
+ * a sign-in lands on Chats or the welcome, never here: starting it made a slow
+ * phone download the feed's hundred files, open two dozen relay connections
+ * and ask for posts before the landing could show (8 s, measured 2026-11-21).
  */
 export function holdHomeForLanding(env: {
   /** The current location. */
@@ -141,8 +147,11 @@ export function holdHomeForLanding(env: {
   pubkey: string | null | undefined;
   collapsed: boolean;
   landed: boolean;
+  /** Signed out, with the landing or the sign-in screen covering the whole page. */
+  covered?: boolean;
 }): boolean {
   if (env.location !== "/") return false;
+  if (!env.pubkey && env.covered) return true;
   return shouldLandOnChats({
     pubkey: env.pubkey,
     collapsed: env.collapsed,

@@ -29,6 +29,15 @@ export const PRELOAD_ROUTES: readonly PreloadRoute[] = [
   { path: "/profile/", module: "client/src/pages/Profile.tsx" },
 ];
 
+/**
+ * A signed-out visitor at "/" is shown the landing, and the feed is held back
+ * under it (lib/ia-landing.ts `holdHomeForLanding`): their page's code is the
+ * landing's, not Home's. Its files go in the map under this key, which is not
+ * a path, so no address can match it.
+ */
+export const LANDING_KEY = "@landing";
+export const LANDING_MODULE = "client/src/components/GalaxyWarpOverlay.tsx";
+
 interface BundleChunk {
   type: "chunk";
   fileName: string;
@@ -62,6 +71,11 @@ export function routePreloadMap(bundle: Record<string, BundleItem>, routes: read
     const files = closure([page.fileName], byFile).filter((f) => !entryGraph.has(f));
     if (files.length) map[r.exact ? r.path : r.path] = files;
   }
+  const landing = chunks.find((c) => c.facadeModuleId?.replace(/\\/g, "/").endsWith("/" + LANDING_MODULE));
+  if (landing) {
+    const files = closure([landing.fileName], byFile).filter((f) => !entryGraph.has(f));
+    if (files.length) map[LANDING_KEY] = files;
+  }
   return map;
 }
 
@@ -70,8 +84,9 @@ export function routePreloadScript(map: Record<string, string[]>): string {
   return (
     "(function(){try{var m=" + JSON.stringify(map) + ";" +
     "var p=location.pathname,l=null;" +
-    "if(p==='/')l=m['/'];" +
-    "else for(var k in m){if(k==='/')continue;" +
+    // Signed out at "/": the landing's files (the same test the first-screen request uses).
+    "if(p==='/')l=localStorage.getItem('relay-outpost-pubkey')?m['/']:(m['" + LANDING_KEY + "']||m['/']);" +
+    "else for(var k in m){if(k==='/'||k==='" + LANDING_KEY + "')continue;" +
     "if(k.charAt(k.length-1)==='/'?p.indexOf(k)===0:(p===k||p.indexOf(k+'/')===0)){l=m[k];break;}}" +
     "if(!l)return;" +
     "for(var i=0;i<l.length;i++){var e=document.createElement('link');e.rel='modulepreload';e.href='/'+l[i];e.crossOrigin='';document.head.appendChild(e);}" +
