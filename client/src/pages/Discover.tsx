@@ -261,6 +261,26 @@ function TileSkeleton() {
   );
 }
 
+/**
+ * The news story's stand-in while the outlets answer, on the story's own line
+ * grid: the headline (two lines on a phone, one where the tile is wide), the
+ * source line, and the two summary lines a wide screen shows. A stand-in
+ * shorter than what replaces it moves the page.
+ */
+function NewsStoryWaiting() {
+  return (
+    <span className="block animate-pulse" aria-hidden="true" data-testid="news-tile-story-waiting">
+      <span className="block h-[22px] sm:h-[25px] py-[3px]"><span className="block h-full w-11/12 rounded bg-muted/50" /></span>
+      <span className="block md:hidden h-[22px] sm:h-[25px] py-[3px]"><span className="block h-full w-3/5 rounded bg-muted/50" /></span>
+      <span className="block mt-1 h-4 py-[2px]"><span className="block h-full w-2/5 rounded bg-muted/40" /></span>
+      <span className="hidden md:block mt-2">
+        <span className="block h-5 py-[3px]"><span className="block h-full w-full rounded bg-muted/40" /></span>
+        <span className="block h-5 py-[3px]"><span className="block h-full w-4/5 rounded bg-muted/40" /></span>
+      </span>
+    </span>
+  );
+}
+
 /** The couldn't-reach body + its retry footer, shared by every tile. */
 function unreachableBody(what: string): ReactNode {
   return <span className="block text-[13px] text-muted-foreground">Couldn't reach {what} — the content is there, we just couldn't ask.</span>;
@@ -281,15 +301,19 @@ function RetryFooter({ onRetry, testId }: { onRetry: () => void; testId: string 
 function NewsHeroTile() {
   const [, setLocation] = useLocation();
   const feeds = useMemo(() => discoverNewsFeeds(), []);
-  // Same keys and queryFn shape as the News page, so the react-query cache is
-  // shared both directions — News opens instantly after Discover and Discover
-  // paints instantly after News. Do NOT use the app's default queryFn: it
-  // joins key segments with "/" and asks for /api/rss/https://… (wrong).
+  // Same keys as the News page, so the react-query cache is shared both
+  // directions — News paints its headlines instantly after Discover and
+  // Discover paints instantly after News. Do NOT use the app's default queryFn:
+  // it joins key segments with "/" and asks for /api/rss/https://… (wrong).
+  // This tile shows a headline, so it asks for the brief feed: without every
+  // article's full text, which was ~300 KB on the wire ahead of the news
+  // picture. The answer is marked, and News asks again for the articles
+  // (shared/rss-brief.ts).
   const queries = useQueries({
     queries: feeds.map((f) => ({
       queryKey: ["/api/rss", f.url],
       queryFn: async () => {
-        const res = await fetch(`/api/rss?url=${encodeURIComponent(f.url)}`);
+        const res = await fetch(`/api/rss?url=${encodeURIComponent(f.url)}&brief=1`);
         // Throw on HTTP errors, exactly like the News page's queryFn for this
         // SAME key. /api/rss returns 4xx/5xx with a JSON {error} body; caching
         // that as a 10-minute success would poison the shared cache — News
@@ -395,6 +419,13 @@ function NewsHeroTile() {
   const dek = item?.description ? stripHtml(item.description).slice(0, 180) : "";
   const [heroImgBroken, setHeroImgBroken] = useState(false);
   useEffect(() => { setHeroImgBroken(false); }, [img]);
+  // The picture's place is held from the first render, at its final size, while
+  // the outlets are still answering: adding it when the first one answered
+  // pushed every tile on the page down ~200px under a visitor already reading
+  // (live, slow phone, 2026-11-21). It is given back only once everyone has
+  // answered and the story has no picture to put there.
+  const showPicture = !!(item && img && !heroImgBroken);
+  const holdPicture = showPicture || (!settled && !noFeeds && !heroImgBroken);
 
   // The whole tile opens /news (owner call, 2026-08-18, superseding the
   // story-door pass): the story teaser is display-only, and the read-mark
@@ -412,15 +443,18 @@ function NewsHeroTile() {
         data-testid="tile-news"
         aria-label="Open News"
       >
-        {item && img && !heroImgBroken && (
+        {holdPicture && (
           <span
             className="block w-full aspect-[16/9] overflow-hidden bg-muted/30"
             data-testid="news-tile-story-image"
           >
-            <img
-              src={`/api/rss/image-proxy?url=${encodeURIComponent(img)}`}
+            {showPicture && <img
+              src={`/api/rss/image-proxy?url=${encodeURIComponent(img ?? "")}`}
               alt=""
-              loading="lazy"
+              // The first thing a visitor looks at on this page, above the fold:
+              // asked for at once, ahead of the tiles' own lookups, never lazily.
+              loading="eager"
+              fetchPriority="high"
               className="w-full h-full object-cover"
               // State, not an imperative style.display="none": the old version
               // set display:none on the wrapper, and because React reuses this
@@ -428,7 +462,7 @@ function NewsHeroTile() {
               // inline style was never cleared — so ONE broken thumbnail blanked
               // the image for every hero after it. `heroImgBroken` resets on img.
               onError={() => setHeroImgBroken(true)}
-            />
+            />}
           </span>
         )}
         <span className="block p-3 sm:p-4">
@@ -471,7 +505,7 @@ function NewsHeroTile() {
           ) : allFailed ? (
             unreachableBody("the news sources")
           ) : !settled ? (
-            <TileSkeleton />
+            <NewsStoryWaiting />
           ) : (
             // Someone answered and pickHero still found nothing to show.
             <span className="block text-[13px] text-muted-foreground">You're caught up.</span>

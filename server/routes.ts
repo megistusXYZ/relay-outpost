@@ -55,6 +55,7 @@ import { verifyNip98 } from "./nip98-auth";
 import { TTLCache } from "./ttl-cache";
 import { clusterNews, type NewsInput, type NewsCluster } from "./news-corroboration";
 import { NEWS_SOURCES, NEWS_TOPICS } from "@shared/news-sources";
+import { briefFeed } from "@shared/rss-brief";
 import { isPrivateIp, validateHostSafety } from "./net-safety";
 import { fetchPlaylistText, probeHlsLiveness } from "./hls-liveness";
 import { discoverRadioStation, fetchStationInfo, type RadioStationInfo } from "./radio-station";
@@ -1688,10 +1689,14 @@ export async function registerRoutes(
       return res.status(400).json({ error: "Invalid URL" });
     }
 
+    // ?brief=1: the same feed without every article's full text, for pages
+    // that only show headlines (shared/rss-brief.ts). The cache always holds
+    // the full feed; a brief answer is cut from it on the way out.
+    const brief = req.query.brief === "1";
     const cached = rssCache.get(feedUrl);
     if (cached) {
       res.set('Cache-Control', 'public, max-age=300');
-      return res.json(cached);
+      return res.json(brief ? briefFeed(cached) : cached);
     }
 
     try {
@@ -1803,7 +1808,7 @@ export async function registerRoutes(
       const cacheTtl = result.isPodcast ? RSS_PODCAST_TTL : RSS_NEWS_TTL;
       rssCache.set(feedUrl, result, cacheTtl);
       res.set('Cache-Control', `public, max-age=${Math.floor(cacheTtl / 1000)}`);
-      res.json(result);
+      res.json(brief ? briefFeed(result) : result);
     } catch (err: any) {
       console.error("RSS fetch error:", err.message);
       res.status(502).json({ error: "Failed to fetch or parse RSS feed" });
