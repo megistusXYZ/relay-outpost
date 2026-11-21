@@ -1617,7 +1617,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
               {unseenCount > 0 && (
                 <button
                   onClick={scrollChatToBottom}
-                  className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1 rounded-full bg-primary dark:bg-brand/90 hover:bg-primary/90 dark:hover:bg-brand text-white text-xs font-medium shadow-lg shadow-brand/30 dark:shadow-brand/40 transition-all cursor-pointer backdrop-blur-sm"
+                  className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium shadow-lg transition-colors cursor-pointer"
                   data-testid="button-chat-new-messages"
                 >
                   <ChevronDown className="w-3 h-3" />
@@ -1651,7 +1651,7 @@ function StreamDetail({ stream }: { stream: LiveEventData }) {
                     size="sm"
                     disabled={!chatInput.trim() || sending}
                     data-testid="button-chat-send"
-                    className={`p-0 bg-primary dark:bg-brand/80 hover:bg-primary/90 dark:hover:bg-brand/80 text-white ${mobileChatActive ? "h-10 w-10" : "h-7 w-7"}`}
+                    className={`p-0 ${mobileChatActive ? "h-10 w-10" : "h-7 w-7"}`}
                   >
                     <Send className={mobileChatActive ? "w-4 h-4" : "w-3 h-3"} />
                   </Button>

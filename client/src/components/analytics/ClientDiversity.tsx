@@ -664,7 +664,7 @@ export function ClientDiversity({ relays: propRelays }: { relays?: string[] }) {
                   onClick={() => toggleClient(c.id)}
                   className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
                     selectedClients.has(c.id)
-                      ? "bg-brand dark:bg-brand/20 text-foreground border border-brand/40 dark:border-brand/30"
+                      ? "bg-foreground text-background border border-transparent"
                       : "bg-black/[0.02] dark:bg-white/[0.03] text-foreground/60 border border-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
                   }`}
                 >

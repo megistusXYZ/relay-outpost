@@ -361,7 +361,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={next}
-              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-next"
             >
               Next
@@ -399,7 +399,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={() => beginNextTour(nextBriefing.pageId, nextBriefing.path)}
-              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-next-tour"
             >
               Begin
@@ -425,7 +425,7 @@ export function MissionBriefing({ pageId, steps: stepsInput, startDelayMs = 600 
               ref={nextBtnRef}
               type="button"
               onClick={dismiss}
-              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
+              className="text-xs inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand font-medium"
               data-testid="button-mission-briefing-finish"
             >
               Finish

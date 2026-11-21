@@ -1223,7 +1223,7 @@ export function CreatePostFAB() {
                       : ((!content.trim() && !audioAttachment && mediaAttachments.length === 0 && !gifUrl) || isPublishing || isUploading || !scheduleDateTime)
                     }
                     size="sm"
-                    className="shrink-0 h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-brand dark:hover:bg-brand dark:text-white"
+                    className="shrink-0 h-9 px-4"
                     data-testid="button-schedule"
                   >
                     {isPublishing ? (
@@ -1858,7 +1858,7 @@ export function CreatePostFAB() {
                     title={`Drafts (${draftCount})`}
                   >
                     <RotateCcw className="w-[18px] h-[18px]" />
-                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-[8px] text-primary-foreground dark:bg-brand dark:text-white flex items-center justify-center font-medium">{draftCount}</span>
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-[8px] text-primary-foreground flex items-center justify-center font-medium">{draftCount}</span>
                   </Button>
                 )}
               </div>

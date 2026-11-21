@@ -295,7 +295,7 @@ export function HorizonNewEntryDialog({ open, onOpenChange, relayUrl }: HorizonN
             size="sm"
             onClick={handleCreate}
             disabled={!title.trim()}
-            className="bg-brand hover:bg-brand text-white text-xs gap-1.5 h-9 sm:h-8 px-4 sm:px-3"
+            className="text-xs gap-1.5 h-9 sm:h-8 px-4 sm:px-3"
           >
             Create Entry
             <ArrowRight className="w-3 h-3" />
