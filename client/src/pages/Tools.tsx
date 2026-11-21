@@ -74,27 +74,6 @@ export default function Tools() {
 
   return (
     <div className="relative min-h-screen" data-testid="page-tools">
-      {/* Atmospheric backdrop */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 bottom-1/2 z-0 pointer-events-none bg-cover bg-center"
-        style={{
-          backgroundImage: "url(/images/tools-bg.webp)",
-          opacity: 0.08,
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 28%, rgba(0,0,0,0.55) 60%, transparent 88%)",
-          maskImage: "linear-gradient(to bottom, transparent 0%, #000 28%, rgba(0,0,0,0.55) 60%, transparent 88%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-1/4 bottom-1/4 z-0 pointer-events-none bg-cover bg-center"
-        style={{
-          backgroundImage: "url(/images/landing/galaxy-bg.webp)",
-          opacity: 0.06,
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 35%, #000 50%, rgba(0,0,0,0.6) 65%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 35%, #000 50%, rgba(0,0,0,0.6) 65%, transparent 100%)",
-        }}
-      />
       <div className="relative z-10 px-3 sm:px-4 py-4 sm:py-6 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <div className="max-w-2xl mx-auto">
 

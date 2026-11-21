@@ -292,21 +292,6 @@ export function FeedbackDrawer() {
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        {/* Soft-blend background art (bug-hunter cockpit — same treatment as
-            Tools/Help): pinned to the sheet's top, gradient-masked so it fades
-            out well before the form fields, opacity low enough that copy stays
-            fully readable in both themes. pointer-events-none + aria-hidden —
-            pure decoration. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[46%] z-0 bg-cover bg-top"
-          style={{
-            backgroundImage: "url(/images/feedback-bg.jpg)",
-            opacity: 0.09,
-            WebkitMaskImage: "linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.7) 45%, transparent 95%)",
-            maskImage: "linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.7) 45%, transparent 95%)",
-          }}
-        />
         <div className="relative z-10">
         <SheetHeader className="text-left">
           <SheetTitle className="text-sm flex items-center gap-2 font-medium">
@@ -433,7 +418,7 @@ export function FeedbackDrawer() {
                       key={opt.id}
                       type="button"
                       onClick={() => handleTypeSelect(opt.id)}
-                      className={`flex flex-col items-center gap-1 py-2 rounded-md border text-[10px] transition-colors ${
+                      className={`flex flex-col items-center gap-1 py-2 rounded-md border text-xs transition-colors ${
                         active
                           ? "border-brand/60 bg-brand/10 text-brand"
                           : "border-border/40 hover:border-brand/30 text-muted-foreground"
@@ -491,7 +476,7 @@ export function FeedbackDrawer() {
                   type="button"
                   onClick={() => setIsPrivate(true)}
                   disabled={!canPrivate}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-[11px] transition-colors disabled:opacity-40 ${
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-xs transition-colors disabled:opacity-40 ${
                     isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground"
                   }`}
                   data-testid="button-feedback-private"
@@ -501,7 +486,7 @@ export function FeedbackDrawer() {
                 <button
                   type="button"
                   onClick={() => setIsPrivate(false)}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-[11px] transition-colors ${
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-md border text-xs transition-colors ${
                     !isPrivate ? "border-brand/60 bg-brand/10 text-brand" : "border-border/40 hover:border-brand/30 text-muted-foreground"
                   }`}
                   data-testid="button-feedback-public"

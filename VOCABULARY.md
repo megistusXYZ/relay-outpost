@@ -34,8 +34,7 @@ eight names for one secret and a mission-control metaphor on every screen.)
 
 ## Kept on purpose
 
-- The wordmark **RELAY OUTPOST** and the tagline **Beyond the Algorithm** (the default page title). Brand, not a control.
-- The site title "One outpost for everything you say."
+- The wordmark **Relay Outpost** and the tagline **The next phase of the internet**: the page's title, the share image, and the browser tab when a page has no title of its own. Brand, not a control. ("Beyond the Algorithm" and "One outpost for everything you say" were earlier lines; neither is used any more.)
 - **Outpost** by name on the visitor landing and in the Relays home heading ("Give your Outpost a home"): the product speaking, not a name for a thing (owner, 2026-11-16, kept 2026-11-18).
 - **Nostr** by name, once per screen at most, where the open network has to be named.
 - **Web of Trust** in the essay that explains it, and the nostr.com / brainstorm links in Help.

@@ -83,28 +83,6 @@ export function InviteFriend({
         </DialogTrigger>
       )}
       <DialogContent className="max-w-[calc(100vw-2rem)] gap-5 overflow-hidden glass-dialog-card border-brand/15 rounded-2xl sm:rounded-2xl sm:max-w-md">
-        {/* Soft violet glow up top — same accent family as the Create studio.
-            Negative z so it sits behind the content and close button. The
-            astronaut backdrop layers underneath, following the Help/Tools
-            pattern (WtfIsThis.tsx): a faint, masked space illustration. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[inherit]">
-          {/* Astronaut + lunar frontier — transparent-bg line art (luminance→alpha),
-              so it never washes the card. Anchored bottom, faded toward the top so
-              the title/description sit over clear space. Inverted in light mode
-              (dark lines on the light card) / kept as-is in dark (light lines on the
-              dark card) → reads consistently, text stays fully legible in both. */}
-          <div
-            className="absolute inset-0 bg-cover bg-bottom bg-no-repeat opacity-[0.13] invert dark:opacity-[0.11] dark:invert-0"
-            style={{
-              backgroundImage: "url(/images/invite-bg.webp)",
-              WebkitMaskImage:
-                "linear-gradient(to bottom, transparent 0%, transparent 30%, rgba(0,0,0,0.35) 58%, rgba(0,0,0,0.8) 82%, #000 100%)",
-              maskImage:
-                "linear-gradient(to bottom, transparent 0%, transparent 30%, rgba(0,0,0,0.35) 58%, rgba(0,0,0,0.8) 82%, #000 100%)",
-            }}
-          />
-          <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(13,15,18,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_70%)]" />
-        </div>
         <DialogHeader className="text-center sm:text-center">
           {/* Centered, icon-free header — the chip read as clutter next to the
               already-descriptive title. */}
@@ -115,7 +93,7 @@ export function InviteFriend({
         </DialogHeader>
 
         <div className="flex min-w-0 items-center gap-2 rounded-lg border border-brand/20 bg-brand/[0.06] px-3 py-2.5">
-          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground/70" data-testid="text-invite-link">
+          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground" data-testid="text-invite-link">
             {link}
           </span>
           <button
@@ -131,7 +109,7 @@ export function InviteFriend({
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleCopy}
-            className="min-h-11 flex-1 bg-brand text-white hover:bg-brand"
+            className="min-h-11 flex-1"
             data-testid="button-invite-copy-cta"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
