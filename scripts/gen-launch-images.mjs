@@ -34,7 +34,9 @@ export const SCREENS = [
   [440, 956, 3], // 16 Pro Max, 17 Pro Max
 ];
 
-export const CANVAS = "#0a0a0a";
+// The app's own dark background (index.css --background, the manifest's background_color): the launch
+// image, the splash and the page are one colour, so no hand-over between them changes tint.
+export const CANVAS = "#0a0c10";
 const MARK = "#ffffff";
 const GLOW = "#FF6A3D";
 const EMBER = "#FF6A3D";

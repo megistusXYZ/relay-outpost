@@ -35,6 +35,34 @@ describe("the launch bundle", () => {
   });
 
   it("the landing/sign-in overlay loads only once it has been needed", () => {
-    expect(app).toMatch(/\{galaxyNeeded && <Suspense fallback=\{null\}>\s*<GalaxyWarpOverlay/);
+    // Its code is fetched on demand (never a static import), and only when the overlay is needed.
+    expect(app).toMatch(/import\("@\/components\/GalaxyWarpOverlay"\)/);
+    expect(app).not.toMatch(/import \{[^}]*GalaxyWarpOverlay[^}]*\} from "@\/components\/GalaxyWarpOverlay"/);
+    expect(app).toMatch(/const GalaxyWarpOverlay = useLandingOverlay\(galaxyNeeded\);/);
+    expect(app).toMatch(/if \(!needed \|\| got\.Overlay\) return;/);
+  });
+
+  // React shows a lazy component by a Suspense "retry", which runs below every ordinary update and
+  // never expires. On a slow phone the signed-out feed kept the page busy and the landing waited 11
+  // to 15 seconds in one launch out of three, with the app's empty shell showing (measured on a
+  // production build with the processor slowed four times, 2026-11-21).
+  it("the landing is put on the page by an ordinary update, never by a Suspense retry", () => {
+    expect(app).not.toMatch(/lazy\(\(\) => lazyNamed\(\(\) => import\("@\/components\/GalaxyWarpOverlay"\)/);
+    expect(app).toMatch(/loadLandingOverlay\(\)\.then\(\s*\(Overlay\) => \{ if \(live\) setGot\(\{ Overlay, error: null \}\); \}/);
+  });
+
+  // The launch screen used to lift as soon as the shell had painted, landing or no landing.
+  it("while a visitor's landing is still downloading, the launch screen stays up", () => {
+    expect(app).toMatch(/\{galaxyNeeded && !GalaxyWarpOverlay && overlayMode !== "hidden" && <LandingPending \/>\}/);
+    expect(app).toMatch(/function LandingPending\(\) \{\s*useLayoutEffect\(\(\) => routeLoaderShown\(\), \[\]\);\s*return null;/);
+  });
+
+  it("someone signed in never waits for the landing's code, which they load hidden", () => {
+    // The hold is only for a landing that will be seen.
+    expect(app).toMatch(/!GalaxyWarpOverlay && overlayMode !== "hidden" && <LandingPending/);
+  });
+
+  it("a landing whose code will not load reaches the error screen, as a failed page does", () => {
+    expect(app).toMatch(/if \(got\.error\) throw got\.error;/);
   });
 });

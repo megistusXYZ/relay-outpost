@@ -251,7 +251,38 @@ const GuestNotePreview = lazy(() => lazyNamed(() => import("@/components/GuestNo
 const GuestProfilePreview = lazy(() => lazyNamed(() => import("@/components/GuestProfilePreview"), "GuestProfilePreview"));
 const GuestArticlePreview = lazy(() => lazyNamed(() => import("@/components/GuestArticlePreview"), "GuestArticlePreview"));
 const GuestDiscussionPreview = lazy(() => lazyNamed(() => import("@/components/GuestDiscussionPreview"), "GuestDiscussionPreview"));
-const GalaxyWarpOverlay = lazy(() => lazyNamed(() => import("@/components/GalaxyWarpOverlay"), "GalaxyWarpOverlay"));
+/**
+ * The visitor's landing and sign-in (GalaxyWarpOverlay): its code loads on demand, as before, but it
+ * is put on the page by an ordinary state change, not by React.lazy and Suspense.
+ *
+ * With Suspense, the landing was shown by a "retry" once its code arrived, and React runs retries
+ * below every ordinary update and never lets them expire. On a slow phone the signed-out feed
+ * underneath keeps the page busy, so the landing waited its turn for 11 to 15 seconds in one launch
+ * out of three while a visitor looked at the app's empty shell (measured on a production build with
+ * the processor slowed four times, 2026-11-21). An ordinary update is not starved.
+ */
+type LandingOverlay = (typeof import("@/components/GalaxyWarpOverlay"))["GalaxyWarpOverlay"];
+let landingOverlay: LandingOverlay | null = null;
+let landingOverlayLoading: Promise<LandingOverlay> | null = null;
+function loadLandingOverlay(): Promise<LandingOverlay> {
+  return (landingOverlayLoading ??= lazyNamed(() => import("@/components/GalaxyWarpOverlay"), "GalaxyWarpOverlay").then((m) => (landingOverlay = m.default)));
+}
+/** The landing overlay once its code is in, or null while it loads. Asks for the code only once it is needed. */
+function useLandingOverlay(needed: boolean): LandingOverlay | null {
+  const [got, setGot] = useState<{ Overlay: LandingOverlay | null; error: unknown }>(() => ({ Overlay: landingOverlay, error: null }));
+  useEffect(() => {
+    if (!needed || got.Overlay) return;
+    let live = true;
+    loadLandingOverlay().then(
+      (Overlay) => { if (live) setGot({ Overlay, error: null }); },
+      // lazyRetry has already tried again and repaired a stale build; what is left goes to the error screen.
+      (error) => { landingOverlayLoading = null; if (live) setGot({ Overlay: null, error }); },
+    );
+    return () => { live = false; };
+  }, [needed, got.Overlay]);
+  if (got.error) throw got.error;
+  return got.Overlay;
+}
 const HeaderAudioPlayer = lazy(() => lazyNamed(() => import("@/components/HeaderAudioPlayer"), "HeaderAudioPlayer"));
 // Overlays nobody sees at launch: loaded after the first screen by
 // DeferredShell, which replays any open that arrives before they have.
@@ -323,6 +354,17 @@ if (typeof window !== "undefined") {
       import.meta.hot.dispose(() => { clearTimeout(prefetchTimer); document.removeEventListener("visibilitychange", onVisible); });
     }
   }
+}
+
+/**
+ * The visitor's landing is still downloading: the launch screen stays up until
+ * it is in (lib/launch-handoff.ts), so it never lifts onto the app's empty
+ * shell. Shows nothing itself. Only for a landing that will be seen: someone
+ * signed in loads the same code hidden, and must not wait for it.
+ */
+function LandingPending() {
+  useLayoutEffect(() => routeLoaderShown(), []);
+  return null;
 }
 
 function LazyFallback() {
@@ -1311,6 +1353,7 @@ function AppLayout() {
   const galaxyNeededRef = useRef(false);
   if (overlayMode !== "hidden") galaxyNeededRef.current = true;
   const galaxyNeeded = galaxyNeededRef.current;
+  const GalaxyWarpOverlay = useLandingOverlay(galaxyNeeded);
 
   // Introduce logged-out visitors to the Help hub with the nav expanded on
   // desktop (so they can see Search / Feed / News while they read). Auto-opens
@@ -1603,7 +1646,8 @@ function AppLayout() {
       {!!pubkey && <WiderNetworkSheetHost />}
       {/* Own boundary: signed-in users mount this in "hidden" mode (renders
           null), so the lazy chunk must never suspend the app shell itself. */}
-      {galaxyNeeded && <Suspense fallback={null}>
+      {galaxyNeeded && !GalaxyWarpOverlay && overlayMode !== "hidden" && <LandingPending />}
+      {galaxyNeeded && GalaxyWarpOverlay && <Suspense fallback={null}>
         <GalaxyWarpOverlay mode={overlayMode} onLaunch={handleLaunch} onWarpStarted={handleCockpitWarpStarted} onWarpComplete={handleWarpComplete} onDimmedSignIn={handleDimmedSignIn} onCockpitBack={handleCockpitBack} onWarpToCockpitComplete={handleWarpToCockpitComplete} />
       </Suspense>}
     </SidebarProvider>
