@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { SearchPill } from "@/components/SearchPill";
 import { OttoEmpty } from "@/components/OttoEmpty";
 import { useState, useMemo, useEffect } from "react";
@@ -474,7 +475,7 @@ function DeepDiveCard({ item }: { item: DeepDiveItem }) {
 }
 
 export default function WtfIsThis() {
-  useDocumentTitle("Help & guides — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/help"));
   const [activeCategory, setActiveCategory] = useState<ContentCategory>("guides");
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

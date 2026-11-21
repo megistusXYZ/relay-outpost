@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import {
   Shield,
@@ -14,7 +15,7 @@ import { OttoMark } from "@/components/OttoMark";
 import { StepCard as SectionCard } from "@/components/wtf/StepCard";
 
 export default function WotVsAlgorithms() {
-  useDocumentTitle("Web of Trust vs. algorithms — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/help/wot-vs-algorithms"));
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150">

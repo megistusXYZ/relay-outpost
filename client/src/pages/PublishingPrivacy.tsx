@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import {
   Lock,
@@ -17,7 +18,7 @@ import { OttoMark } from "@/components/OttoMark";
 import { StepCard } from "@/components/wtf/StepCard";
 
 export default function PublishingPrivacy() {
-  useDocumentTitle("Publishing & privacy — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/help/publishing-privacy"));
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-in fade-in duration-150">

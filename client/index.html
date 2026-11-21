@@ -15,6 +15,7 @@
     <meta name="description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
     <meta name="keywords" content="social platform, online community, creator platform, community app, private messaging, content creators, own your account, Nostr" />
 
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -25,6 +26,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Relay Outpost" />
+    <meta name="application-name" content="Relay Outpost" />
     <!-- iOS home-screen launch images (scripts/gen-launch-images.mjs): shown by iOS
          itself from the tap until the page first paints. One per iPhone screen, in
          the brand canvas for BOTH light and dark phones: iOS picks by the phone's
@@ -48,7 +50,7 @@
     <meta property="og:description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Relay Outpost" />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image" content="https://relayop.xyz/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Relay Outpost: the next phase of the internet" />
@@ -56,7 +58,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Relay Outpost: the next phase of the internet" />
     <meta name="twitter:description" content="Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number." />
-    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image" content="https://relayop.xyz/og-image.png" />
     <meta name="twitter:image:alt" content="Relay Outpost: the next phase of the internet" />
 
     <script type="application/ld+json">
@@ -64,10 +66,16 @@
       "@context": "https://schema.org",
       "@graph": [
         {
+          "@type": "WebSite",
+          "name": "Relay Outpost",
+          "alternateName": ["Outpost", "Relay Op"],
+          "url": "https://relayop.xyz/"
+        },
+        {
           "@type": "WebApplication",
-          "name": "Outpost",
-          "alternateName": ["Relay Outpost", "Relay Op"],
-          "description": "Post, chat, go live and bring your people together, all in one place that belongs to you. No email, no algorithm, no middlemen.",
+          "name": "Relay Outpost",
+          "alternateName": ["Outpost", "Relay Op"],
+          "description": "Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number.",
           "url": "https://relayop.xyz",
           "applicationCategory": "SocialNetworkingApplication",
           "operatingSystem": "Web",

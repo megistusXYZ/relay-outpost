@@ -6,7 +6,7 @@
   },
   "type": "module",
   "license": "MIT",
-  "description": "A full-featured Nostr social client with relay-based communities, Web of Trust, and privacy-first publishing.",
+  "description": "Relay Outpost: post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source.",
   "author": "Megistus <info@megistus.xyz>",
   "homepage": "https://relayop.xyz",
   "repository": {

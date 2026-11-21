@@ -159,3 +159,18 @@ describe("escapeHtml", () => {
     expect(escapeHtml(`&<>"'`)).toBe("&amp;&lt;&gt;&quot;&#039;");
   });
 });
+
+describe("a card with no picture of its own falls back to the site's share image", () => {
+  const html = buildOgHtml({ title: "A post", description: "Words", image: "", url: "https://relayop.xyz/thread/abc", type: "article" }, "https://relayop.xyz/og-image.png");
+
+  it("described at the size the file really is (it said 1155 wide for a 1200 file)", () => {
+    expect(html).toContain('<meta property="og:image:width" content="1200" />');
+    expect(html).toContain('<meta property="og:image:height" content="630" />');
+    expect(html).not.toContain("1155");
+  });
+
+  it("with the site's current words as its alt text", () => {
+    expect(html).toContain('<meta property="og:image:alt" content="Relay Outpost: the next phase of the internet" />');
+    expect(html).not.toMatch(/own your account/i);
+  });
+});

@@ -1,7 +1,7 @@
 {
   "name": "Relay Outpost",
   "short_name": "Relay Outpost",
-  "description": "Own your account, your community, and your audience. Publish, go live, and bring people together — no email, no middlemen, no algorithm deciding who sees your work.",
+  "description": "Post, chat, go live and bring your people together, all in one place that belongs to you. Free and open source. No email or phone number.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -40,10 +40,10 @@
   "screenshots": [
     {
       "src": "/og-image.png",
-      "sizes": "1155x630",
+      "sizes": "1200x630",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Relay Outpost — own your account, your community, and your audience"
+      "label": "Relay Outpost: the next phase of the internet"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import { ArrowLeft, ShieldCheck, Key, Radio, Database, Eye, FileText, FlaskConical } from "lucide-react";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -30,7 +31,7 @@ function Section({
 }
 
 export default function Privacy() {
-  useDocumentTitle("Privacy — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/privacy"));
   const goBack = useGoBack();
 
   return (

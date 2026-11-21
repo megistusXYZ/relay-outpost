@@ -1,3 +1,4 @@
+import { publicPageTitle } from "@shared/public-pages";
 import { Link } from "wouter";
 import { ArrowLeft, Compass, Key, Radio, AlertTriangle, Scale, FileText, Users, FlaskConical } from "lucide-react";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -30,7 +31,7 @@ function Section({
 }
 
 export default function Covenant() {
-  useDocumentTitle("Terms — Relay Outpost");
+  useDocumentTitle(publicPageTitle("/terms"));
   const goBack = useGoBack();
 
   return (
