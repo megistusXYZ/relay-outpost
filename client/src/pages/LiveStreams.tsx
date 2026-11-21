@@ -93,6 +93,22 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/**
+ * Marks an audio room, on its card and on its own page. The pill is solid in
+ * both themes, so the word reads on the page and over a thumbnail alike.
+ * Light: the success word on the muted surface. It was white on 80% emerald,
+ * 2.9:1. Dark: white on solid emerald, the colour the old see-through pill
+ * showed on a dark card. Over a bright thumbnail that one fell to 3.2:1.
+ */
+function AudioBadge({ label, testId }: { label: string; testId?: string }) {
+  return (
+    <Badge data-testid={testId} className="bg-muted dark:bg-emerald-700 text-success dark:text-white border-border dark:border-emerald-500/50 gap-1">
+      <Radio className="w-3 h-3" />
+      {label}
+    </Badge>
+  );
+}
+
 function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onClick: () => void; liveness?: StreamLiveness }) {
   // Credit the HOST (the human streamer) — not stream.pubkey, which is the
   // publishing platform account that authored the kind-30311 event.
@@ -148,12 +164,7 @@ function StreamCard({ stream, onClick, liveness }: { stream: LiveEventData; onCl
           {liveness === "verified-live" && stream.status === "live" && (
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" title="Verified live" />
           )}
-          {isAudioSpace(stream) && (
-            <Badge className="bg-emerald-600/80 text-white border-emerald-500/50 gap-1" data-testid={`badge-audio-space-${stream.id}`}>
-              <Radio className="w-3 h-3" />
-              Audio
-            </Badge>
-          )}
+          {isAudioSpace(stream) && <AudioBadge label="Audio" testId={`badge-audio-space-${stream.id}`} />}
         </div>
         {stream.currentParticipants != null && (
           <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 text-white text-xs backdrop-blur-sm">
@@ -1152,10 +1163,7 @@ function AudioSpaceDetail({ stream }: { stream: LiveEventData }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={stream.status} />
-            <Badge className="bg-emerald-600/80 text-white border-emerald-500/50 gap-1">
-              <Radio className="w-3 h-3" />
-              Audio space
-            </Badge>
+            <AudioBadge label="Audio space" />
             {stream.currentParticipants != null && live && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="w-3.5 h-3.5" />

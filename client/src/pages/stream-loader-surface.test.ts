@@ -144,3 +144,48 @@ describe("the Live page's Planned badge", () => {
     expect(badge).toContain("dark:text-white");
   });
 });
+
+/**
+ * The Audio badge (LIGHT_MODE.md, rule 5). It marks an audio room on its card
+ * and on its own page, and in light mode it was white on 80% emerald: 2.95:1
+ * on a card with no picture, 2.92:1 on the page. One component draws both now:
+ * in light, the success word on the muted surface; in dark, white on emerald.
+ * On a card the badge lies over the stream's thumbnail, so the pill is solid
+ * in both themes: the old 80% emerald let a bright picture through and the
+ * white word fell to 3.23:1 on it in dark.
+ */
+describe("the Live page's Audio badge", () => {
+  const start = SRC.indexOf("function AudioBadge(");
+  const source = start < 0 ? "" : SRC.slice(start, SRC.indexOf("\nfunction ", start + 1));
+  const badge = (source.match(/className="([^"]*)"/) || [])[1] ?? "";
+  const light = badge.split(/\s+/).filter((c) => !c.includes(":"));
+
+  it("is the success word on a neutral surface in light mode", () => {
+    expect(light).toContain("text-success");
+    expect(light).toContain("bg-muted");
+    expect(light.filter((c) => /^(bg|text|border)-(emerald|white)/.test(c))).toEqual([]);
+  });
+
+  it("is white on emerald in dark mode", () => {
+    expect(badge).toContain("dark:bg-emerald-700");
+    expect(badge).toContain("dark:text-white");
+  });
+
+  /** A fill with an opacity suffix (`bg-emerald-600/80`) shows what is under it. */
+  const seeThrough = (classes: string) => classes.split(/\s+/).filter((c) => /(^|:)bg-[^\s]*\/\d/.test(c));
+
+  it("is a solid pill in both themes, so a thumbnail cannot show through it", () => {
+    expect(badge).not.toBe("");
+    expect(seeThrough(badge)).toEqual([]);
+  });
+
+  it("the solid-pill check can fail: it catches the fill that shipped", () => {
+    expect(seeThrough("bg-emerald-600/80 text-white border-emerald-500/50 gap-1")).toEqual(["bg-emerald-600/80"]);
+    expect(seeThrough("bg-muted dark:bg-emerald-600/80 text-success")).toEqual(["dark:bg-emerald-600/80"]);
+  });
+
+  it("is the only place the page draws it: the card and the room's page both use it", () => {
+    expect(SRC.match(/<AudioBadge /g)).toHaveLength(2);
+    expect(SRC).not.toMatch(/"bg-emerald-600\/80 text-white/);
+  });
+});
