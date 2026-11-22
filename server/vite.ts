@@ -5,6 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { apiNotFound } from "./api-not-found";
 
 const viteLogger = createLogger();
 
@@ -35,6 +36,11 @@ export async function setupVite(server: Server, app: Express) {
     server: serverOptions,
     appType: "custom",
   });
+
+  // Every API route is registered before this function runs (index.ts), so an
+  // /api path that reaches here matched none of them. It is not a page, and
+  // not Vite's to answer either. Same handler as production (static.ts).
+  app.use("/api", apiNotFound);
 
   app.use(vite.middlewares);
 
