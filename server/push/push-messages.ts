@@ -13,6 +13,7 @@
  */
 import WebSocket from "ws";
 import { openRelaySocket } from "../relay-socket";
+import { validateHostSafety } from "../net-safety";
 import { verifyEvent, type Event } from "nostr-tools";
 import { isJunkRelay } from "../../shared/relay-junk";
 import type { PushDevice, PushDeviceStore } from "./push-devices";
@@ -22,6 +23,12 @@ export const MESSAGE_ALERT_GAP_MS = 15 * 60_000;
 export const MESSAGE_TTL_SECONDS = 86_400;
 const SUB_ID = "ro-push";
 const SEEN_KEEP = 5_000;
+/**
+ * At most this many relays kept open at once. Anyone can sign up a device to
+ * watch a fresh key on relays of their choosing, so the list is bounded,
+ * keeping the relays the most people share.
+ */
+export const MAX_WATCHED_RELAYS = 300;
 
 interface RelayConn { ws: WebSocket | null; pubkeys: Set<string>; retryMs: number; timer?: ReturnType<typeof setTimeout>; wanted: boolean }
 
@@ -31,8 +38,14 @@ export function createMessageWatcher(o: {
   now?: () => number;
   /** Tests only: a relay on this machine. */
   allowLocalRelays?: boolean;
+  /** Where a relay's name points, checked before each connect (net-safety). */
+  isPublicHost?: (hostname: string) => Promise<boolean>;
+  /** Opens a relay socket (relay-socket.ts); replaceable in tests. */
+  open?: (url: string) => WebSocket;
 }) {
   const now = o.now ?? Date.now;
+  const isPublicHost = o.isPublicHost ?? validateHostSafety;
+  const open = o.open ?? ((url: string) => openRelaySocket(url));
   const conns = new Map<string, RelayConn>();
   const lastAlert = new Map<string, number>();
   const missed = new Set<string>();
@@ -43,9 +56,19 @@ export function createMessageWatcher(o: {
     c.ws.send(JSON.stringify(["REQ", SUB_ID, { kinds: [1059], "#p": [...c.pubkeys], limit: 0 }]));
   };
 
-  const connect = (url: string, c: RelayConn) => {
+  const connect = (url: string, c: RelayConn) => { void connectChecked(url, c); };
+
+  // The name is checked where it points now, not only how it was written at
+  // sign-up: a public name can be pointed at a private address later.
+  const connectChecked = async (url: string, c: RelayConn) => {
+    if (!o.allowLocalRelays) {
+      let ok = false;
+      try { ok = await isPublicHost(new URL(url).hostname); } catch { ok = false; }
+      if (!c.wanted) return;
+      if (!ok) return retry(url, c);
+    }
     let ws: WebSocket;
-    try { ws = openRelaySocket(url); } catch { return retry(url, c); }
+    try { ws = open(url); } catch { return retry(url, c); }
     c.ws = ws;
     ws.on("open", () => { c.retryMs = 5_000; req(c); });
     ws.on("message", (raw) => {
@@ -97,6 +120,11 @@ export function createMessageWatcher(o: {
           want.get(url)!.add(d.watch!);
         }
       }
+      if (want.size > MAX_WATCHED_RELAYS) {
+        const kept = [...want].sort((a, b) => b[1].size - a[1].size).slice(0, MAX_WATCHED_RELAYS);
+        want.clear();
+        for (const [url, pubkeys] of kept) want.set(url, pubkeys);
+      }
       for (const [url, c] of conns) {
         if (want.has(url)) continue;
         c.wanted = false;
@@ -115,6 +143,10 @@ export function createMessageWatcher(o: {
           req(c);
         }
       }
+    },
+    /** The relays being watched (tests). */
+    relays(): string[] {
+      return [...conns.keys()];
     },
     stop(): void {
       for (const c of conns.values()) { c.wanted = false; clearTimeout(c.timer); try { c.ws?.close(); } catch { /* gone */ } }

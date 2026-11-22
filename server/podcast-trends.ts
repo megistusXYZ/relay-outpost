@@ -141,6 +141,21 @@ export function normalizeTrendCategoryKey(raw: string | null | undefined): strin
   return PRESET_CATEGORY_IDS_BY_NAME[v.toLowerCase()] ?? v.toLowerCase();
 }
 
+/** Podcast Index category ids run from 1 to about 110; leave room for more. */
+const MAX_CATEGORY_ID = 200;
+
+/**
+ * Whether a normalized key may have snapshots stored: the global list (""),
+ * a preset category, or one category id. Each new key costs a call with the
+ * server's Podcast Index key and stored rows, and free text ("55, 1",
+ * "55 ,1", ...) made every variant a new one.
+ */
+export function isSnapshotCategory(categoryKey: string): boolean {
+  if (categoryKey === "") return true;
+  if (PRESET_CATEGORY_LABELS[categoryKey]) return true;
+  return /^[1-9]\d{0,2}$/.test(categoryKey) && Number(categoryKey) <= MAX_CATEGORY_ID;
+}
+
 /** Human label for a category key ("" → "" so global reasons omit the name). */
 export function trendCategoryLabel(categoryKey: string): string {
   if (!categoryKey) return "";
