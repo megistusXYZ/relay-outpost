@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { resolveObjectURL } from "node:buffer";
 import {
   buildFileMessageTags,
   parseFileMessage,
   isEncryptedFile,
+  resolveDmFileUrl,
   FILE_ENCRYPTION_ALGO,
   type DmFileRef,
 } from "./dm-file";
@@ -86,5 +88,49 @@ describe("parseFileMessage", () => {
   it("ignores a non-numeric size tag", () => {
     const parsed = parseFileMessage([["size", "not-a-number"]], "https://h/x");
     expect(parsed?.size).toBeUndefined();
+  });
+});
+
+/**
+ * A received file is decrypted into a blob on this site's own origin. The
+ * sender chose its type, so a stranger could send "text/html" and the
+ * attachment link opened their page as relayop.xyz: a look-alike key prompt
+ * on the real address. Only picture, video and sound types are kept; anything
+ * else is plain bytes, which a browser downloads instead of showing.
+ */
+describe("resolveDmFileUrl, a received file's type", () => {
+  const encrypt = async (body: string) => {
+    const key = crypto.getRandomValues(new Uint8Array(32));
+    const nonce = crypto.getRandomValues(new Uint8Array(16));
+    const ck = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, tagLength: 128 }, ck, new TextEncoder().encode(body)));
+    const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
+    return { ct, key: hex(key), nonce: hex(nonce) };
+  };
+  const typeOf = async (mime: string, n: number) => {
+    const { ct, key, nonce } = await encrypt("<!doctype html><title>Your session expired</title>");
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(ct)) as typeof fetch;
+    try {
+      const url = await resolveDmFileUrl({ url: `https://blossom.example/f${n}-${mime}.enc`, mime, key, nonce, algo: "aes-gcm" });
+      const blob = resolveObjectURL(url);
+      return blob?.type;
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+
+  it("a page, a script or an SVG becomes plain bytes", async () => {
+    let n = 0;
+    for (const mime of ["text/html", "application/xhtml+xml", "image/svg+xml", "text/javascript", "application/pdf", "text/html; charset=utf-8", ""]) {
+      expect(await typeOf(mime, n++), mime).toBe("application/octet-stream");
+    }
+  });
+
+  it("pictures, video and sound keep their type, so they still show and play", async () => {
+    let n = 100;
+    for (const mime of ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "audio/mpeg", "audio/ogg", "audio/mp4"]) {
+      expect(await typeOf(mime, n++), mime).toBe(mime);
+    }
   });
 });

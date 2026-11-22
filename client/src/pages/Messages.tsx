@@ -748,6 +748,9 @@ function DMMessageContent({ content, userPubkey, fileMetadata, isMine }: { conte
                   href={seg.value}
                   target="_blank"
                   rel="noopener noreferrer"
+                  // A received file that isn't a picture, video or sound is saved,
+                  // never opened as a page on this site (lib/dm-file.ts).
+                  download={seg.value.startsWith("blob:") ? "attachment" : undefined}
                   className={`underline underline-offset-2 break-all ${
                     isMine
                       ? "text-[#d6dae1] hover:text-[#e4e6eb]"
