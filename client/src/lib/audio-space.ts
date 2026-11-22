@@ -64,7 +64,14 @@ export function audioSpaceFromUrl(url: string): AudioSpace | null {
   const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
   const def = SERVICES.find((s) => host === s.host || host.endsWith(`.${s.host}`));
   if (!def) return null;
-  const room = decodeURIComponent(parsed.pathname.replace(/^\/+|\/+$/g, ""));
+  // Published by anyone: a broken percent escape is not a room, and must not
+  // throw (it took down the whole Live list).
+  let room: string;
+  try {
+    room = decodeURIComponent(parsed.pathname.replace(/^\/+|\/+$/g, ""));
+  } catch {
+    return null;
+  }
   if (!room) return null;
   return {
     service: def.service,

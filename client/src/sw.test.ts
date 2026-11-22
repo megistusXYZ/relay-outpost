@@ -474,3 +474,42 @@ describe("build files — only the real thing is kept", () => {
     expect([...w.stores.keys()]).not.toContain("relay-outpost-v7-static");
   });
 });
+
+describe("answers from /api kept for offline", () => {
+  // The worker keeps /api answers so the app has something to show offline.
+  // It used to keep every one, signed-in answers included: a person's
+  // scheduled posts stayed on the device after they signed out, readable by
+  // whoever used it next.
+  const ask = (w: ReturnType<typeof makeWorld>, p: string, headers?: Record<string, string>) =>
+    w.fire("fetch", { request: { url: ORIGIN + p, method: "GET", mode: "cors", destination: "", headers: new Headers(headers) } });
+  const kept = (w: ReturnType<typeof makeWorld>, p: string) =>
+    [...w.stores.values()].some((m) => m.has(ORIGIN + p));
+
+  it("keeps an ordinary public answer, as before", async () => {
+    const w = makeWorld();
+    await w.install();
+    w.fetch.mockResolvedValue(new Response('{"price":1}', { headers: { "Content-Type": "application/json" } }));
+    await (await ask(w, "/api/btc/price")).responded;
+    expect(kept(w, "/api/btc/price")).toBe(true);
+  });
+
+  it("never keeps an answer to a signed-in request", async () => {
+    const w = makeWorld();
+    await w.install();
+    w.fetch.mockResolvedValue(new Response("[]", { headers: { "Content-Type": "application/json" } }));
+    const r = await ask(w, "/api/schedule?pubkey=abc", { Authorization: "Nostr eyJ..." });
+    expect((await r.responded!).status).toBe(200);
+    expect(kept(w, "/api/schedule?pubkey=abc")).toBe(false);
+  });
+
+  it("never keeps an answer the server marked no-store or private", async () => {
+    const w = makeWorld();
+    await w.install();
+    w.fetch.mockResolvedValueOnce(new Response("{}", { headers: { "Cache-Control": "no-store" } }));
+    await (await ask(w, "/api/a")).responded;
+    w.fetch.mockResolvedValueOnce(new Response("{}", { headers: { "Cache-Control": "private, max-age=60" } }));
+    await (await ask(w, "/api/b")).responded;
+    expect(kept(w, "/api/a")).toBe(false);
+    expect(kept(w, "/api/b")).toBe(false);
+  });
+});

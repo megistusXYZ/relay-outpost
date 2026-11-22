@@ -1,4 +1,7 @@
-const CACHE_VERSION = 'relay-outpost-v8';
+// v9: answers to signed-in /api requests are no longer kept (networkFirst).
+// The new name makes activate delete v8, and with it any such answers a
+// device already holds.
+const CACHE_VERSION = 'relay-outpost-v9';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 // The app's page (index.html is the same for every route). Kept across cache
@@ -349,10 +352,23 @@ async function buildFile(request) {
   return response;
 }
 
+/**
+ * Whether an /api answer may be kept for offline use. Never one asked for
+ * while signed in (it belongs to that person, and stays on the device after
+ * they sign out), and never one the server marked no-store or private.
+ */
+function keepableApiAnswer(request, response) {
+  if (!response.ok) return false;
+  const headers = request.headers;
+  if (headers && typeof headers.get === 'function' && headers.get('Authorization')) return false;
+  const cc = (response.headers.get('Cache-Control') || '').toLowerCase();
+  return !/\b(no-store|private)\b/.test(cc);
+}
+
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (keepableApiAnswer(request, response)) {
       const cache = await caches.open(STATIC_CACHE);
       cache.put(request, response.clone());
     }
