@@ -10,7 +10,7 @@ import { WebSocketServer } from "ws";
 import { generateSecretKey, getPublicKey, type Event } from "nostr-tools";
 import { wrapEvent } from "nostr-tools/nip59";
 import { memoryPushStore, type PushDevice } from "./push-devices";
-import { createMessageWatcher } from "./push-messages";
+import { createMessageWatcher, MAX_WATCHED_RELAYS } from "./push-messages";
 import type { PushSend } from "./push-ring";
 
 /** A relay in this process: stores nothing, streams each new event to matching subscriptions. */
@@ -90,5 +90,45 @@ describe("message alerts", () => {
     await watcher.refresh();
     await until(() => relay.subscribers() === 0);
     expect(relay.subscribers()).toBe(0);
+  });
+});
+
+/**
+ * Anyone can sign up a device to watch a fresh key on relays they choose, so
+ * the relays the server keeps open must be bounded and must be public.
+ */
+describe("the relays the watcher keeps open", () => {
+  const device = (i: number, relays: string[]): PushDevice => ({
+    endpoint: `https://fcm.googleapis.com/fcm/send/d${i}`, keys: { p256dh: "p", auth: "a" },
+    watch: getPublicKey(generateSecretKey()), inboxRelays: relays, rooms: [], updatedAt: 0,
+  });
+
+  it("at most MAX_WATCHED_RELAYS, keeping the ones most people share", async () => {
+    const store = memoryPushStore();
+    for (let i = 0; i < 3; i++) await store.put(device(1000 + i, ["wss://popular.example"]));
+    for (let i = 0; i < MAX_WATCHED_RELAYS + 200; i++) await store.put(device(i, [`wss://r${i}.example`]));
+    const opened: string[] = [];
+    const watcher = createMessageWatcher({ store, send: async () => "sent", isPublicHost: async () => false, open: (u) => { opened.push(u); throw new Error("no network in tests"); } });
+    await watcher.refresh();
+    expect(watcher.relays().length).toBe(MAX_WATCHED_RELAYS);
+    expect(watcher.relays()).toContain("wss://popular.example");
+    watcher.stop();
+  });
+
+  it("checks where a relay's name points before opening a socket, and opens none to a private one", async () => {
+    const store = memoryPushStore();
+    await store.put(device(1, ["wss://inside.example", "wss://outside.example"]));
+    const asked: string[] = [];
+    const opened: string[] = [];
+    const watcher = createMessageWatcher({
+      store, send: async () => "sent",
+      isPublicHost: async (h) => { asked.push(h); return h === "outside.example"; },
+      open: (u) => { opened.push(u); throw new Error("no network in tests"); },
+    });
+    await watcher.refresh();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(asked.sort()).toEqual(["inside.example", "outside.example"]);
+    expect(opened).toEqual(["wss://outside.example"]);
+    watcher.stop();
   });
 });

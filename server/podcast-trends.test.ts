@@ -4,6 +4,7 @@ import {
   computeTrendSuggestions,
   historyCutoffMs,
   normalizeTrendCategoryKey,
+  isSnapshotCategory,
   shouldCaptureSnapshot,
   toSnapshotEntries,
   trendCategoryLabel,
@@ -382,5 +383,31 @@ describe("computeMomentumScore", () => {
     // surging 60 + 2×8=16 + 2 days→6 + rank 5→6 = 88
     expect(out[0].momentumScore).toBe(88);
     expect(out[0].consistent).toBe(false);
+  });
+});
+
+/**
+ * Each new snapshot key costs a call to Podcast Index with the server's key
+ * and up to 15 stored rows. The key used to be any text that passed the
+ * character check ("55,1", "55, 1", "55 ,1" were all different keys), so
+ * anyone could write rows and spend the quota without end. Only the global
+ * list, the app's preset categories and single category ids are kept.
+ */
+describe("isSnapshotCategory", () => {
+  it("the global list, a preset (by id or name) and a single category id", () => {
+    for (const raw of ["", "top", "55", "Sports", "news", "86", "1", "112"]) {
+      expect(isSnapshotCategory(normalizeTrendCategoryKey(raw)), raw).toBe(true);
+    }
+  });
+
+  it("never a list, free text, or an id out of range", () => {
+    for (const raw of ["55,1", "55, 1", "55 ,1", "55,1,2", "news & sports", "aaaa", "0", "999", "00055", "55-1"]) {
+      expect(isSnapshotCategory(normalizeTrendCategoryKey(raw)), raw).toBe(false);
+    }
+  });
+
+  it("those variants used to be distinct keys (or the check above proves nothing)", () => {
+    const keys = new Set(["55,1", "55, 1", "55 ,1"].map(normalizeTrendCategoryKey));
+    expect(keys.size).toBe(3);
   });
 });

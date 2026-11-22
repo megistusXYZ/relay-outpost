@@ -20,6 +20,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { verifyNip98 } from "../nip98-auth";
 import { isJunkRelay } from "../../shared/relay-junk";
+import { isSchedulableRelayUrl } from "../scheduled-relays";
 
 export interface PushDevice {
   endpoint: string;
@@ -60,6 +61,11 @@ export function memoryPushStore(): PushDeviceStore {
 const HEX64 = /^[0-9a-f]{64}$/;
 const MAX_ROOMS = 200;
 const MAX_INBOX_RELAYS = 10;
+// Real values: a push address is a few hundred characters, a device's public
+// key 87 and its auth secret 22 (base64url). Anything far larger is refused.
+const MAX_ENDPOINT_LENGTH = 1024;
+const MAX_P256DH_LENGTH = 128;
+const MAX_AUTH_LENGTH = 64;
 
 /** Google (Chrome, Android), Mozilla (Firefox), Apple (Safari, iPhone), Microsoft (Edge). */
 export function isPushService(endpoint: string): boolean {
@@ -92,6 +98,7 @@ function provenRooms(raw: unknown, endpoint: string): string[] {
 function readSubscription(body: unknown): { endpoint: string; keys: { p256dh: string; auth: string } } | null {
   const s = (body as { subscription?: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } })?.subscription;
   if (!s || typeof s.endpoint !== "string" || typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string") return null;
+  if (s.endpoint.length > MAX_ENDPOINT_LENGTH || s.keys.p256dh.length > MAX_P256DH_LENGTH || s.keys.auth.length > MAX_AUTH_LENGTH) return null;
   return { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
 }
 
@@ -125,7 +132,9 @@ export function registerPushRoutes(app: Express, opts: {
       if (who.pubkey.toLowerCase() !== pubkey) return res.status(403).json({ error: "Only you can ask to hear about your messages" });
       watch = pubkey;
       inboxRelays = Array.isArray(watchIn.inboxRelays)
-        ? [...new Set(watchIn.inboxRelays.filter((r): r is string => typeof r === "string" && !isJunkRelay(r)))].slice(0, MAX_INBOX_RELAYS)
+        // A public-looking name only (no bare address, no .local or .internal
+        // name); where it points is checked again before the server connects.
+        ? [...new Set(watchIn.inboxRelays.filter((r): r is string => typeof r === "string" && !isJunkRelay(r) && isSchedulableRelayUrl(r)))].slice(0, MAX_INBOX_RELAYS)
         : [];
     }
     else if ((req.body as { keepWatch?: unknown }).keepWatch === true) {

@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import { applyApiLimits } from "./api-limits";
+import { applyApiLimits, crawlerPreviewLimit } from "./api-limits";
 
 let server: Server;
 let base = "";
@@ -24,6 +24,8 @@ beforeEach(async () => {
   app.get("/api/nip05/verify", (_q, r) => r.json({ ok: true }));
   app.get("/api/og", (_q, r) => r.json({ ok: true }));
   app.get("/api/tts", (_q, r) => r.json({ ok: true }));
+  app.post("/api/push/device", (_q, r) => r.status(204).end());
+  app.get("/api/push/key", (_q, r) => r.json({ ok: true }));
   server = await new Promise<Server>((ok) => { const s = app.listen(0, "127.0.0.1", () => ok(s)); });
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -58,5 +60,58 @@ describe("API limits", () => {
     const tts = await hit("/api/tts", 21);
     expect(tts.slice(0, 20).every((c) => c === 200)).toBe(true);
     expect(tts[20]).toBe(429);
+  });
+
+  // A device signs up again only when its rooms or mutes change, but each
+  // sign-up can carry 200 signature checks and a list of relays to watch.
+  it("push sign-up has its own bucket: 60 an hour per IP", async () => {
+    const codes: number[] = [];
+    for (let i = 0; i < 61; i++) codes.push((await fetch(base + "/api/push/device", { method: "POST" })).status);
+    expect(codes.slice(0, 60).every((c) => c === 204)).toBe(true);
+    expect(codes[60]).toBe(429);
+  });
+
+  it("…and reading the push key is not counted against it", async () => {
+    for (let i = 0; i < 61; i++) await fetch(base + "/api/push/device", { method: "POST" });
+    expect((await fetch(base + "/api/push/key")).status).toBe(200);
+  });
+});
+
+/**
+ * Link previews for bots are page paths, not /api, so no limit applied, and
+ * each one for a thread or profile it hadn't seen opened sockets to six
+ * relays. Past the limit a bot still gets the page, just without the lookup.
+ */
+describe("bot link previews", () => {
+  const BOT = { "User-Agent": "Mozilla/5.0 (compatible; Twitterbot/1.0)" };
+  async function startPreviews() {
+    const express = (await import("express")).default;
+    const app = express();
+    app.set("trust proxy", 1);
+    app.use(crawlerPreviewLimit(/bot|crawler/i));
+    // The real preview middleware (routes.ts) answers only when the limiter allowed it.
+    app.get("/thread/:id", (_req, res, next) => (res.locals.crawlerPreview === true ? res.send("preview") : next()));
+    app.use((_q, r) => r.send("page"));
+    const s = await new Promise<Server>((ok) => { const x = app.listen(0, "127.0.0.1", () => ok(x)); });
+    return { s, url: `http://127.0.0.1:${(s.address() as AddressInfo).port}` };
+  }
+
+  it("a bot gets 30 previews a minute per IP, then the plain page", async () => {
+    const { s, url } = await startPreviews();
+    const got: string[] = [];
+    for (let i = 0; i < 31; i++) got.push(await (await fetch(`${url}/thread/${i}`, { headers: BOT })).text());
+    s.close();
+    expect(got.slice(0, 30).every((t) => t === "preview")).toBe(true);
+    expect(got[30]).toBe("page");
+  });
+
+  it("people are never counted", async () => {
+    const { s, url } = await startPreviews();
+    const codes: number[] = [];
+    for (let i = 0; i < 40; i++) codes.push((await fetch(`${url}/thread/${i}`)).status);
+    const bot = await (await fetch(`${url}/thread/x`, { headers: BOT })).text();
+    s.close();
+    expect(codes.every((c) => c === 200)).toBe(true);
+    expect(bot).toBe("preview");
   });
 });

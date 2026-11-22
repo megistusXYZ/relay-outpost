@@ -2,8 +2,34 @@
  * Per-IP request limits for the API (api-limits.test.ts). Moved out of
  * index.ts so they can be exercised on a real server in a test.
  */
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import rateLimit from "express-rate-limit";
+
+/** Page paths a bot gets a link preview for, looked up on relays (routes.ts). */
+const PREVIEW_PATH = /^\/(thread|profile|articles|outposts|invite|news|search)(\/|$)/;
+
+/**
+ * Link previews for bots: page paths, so the /api limits never applied, and a
+ * preview for a thread or profile not seen before opens sockets to several
+ * relays. Sets `res.locals.crawlerPreview`: true for a bot's preview request
+ * within 30 a minute per IP, false otherwise. Past the limit the bot still
+ * gets the page, without the lookup.
+ */
+export function crawlerPreviewLimit(userAgent: RegExp): RequestHandler {
+  const limiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: false,
+    legacyHeaders: false,
+    handler: (_req, res, next) => { res.locals.crawlerPreview = false; next(); },
+  });
+  return (req, res, next) => {
+    const bot = req.method === "GET" && PREVIEW_PATH.test(req.path) && userAgent.test(String(req.headers["user-agent"] || ""));
+    res.locals.crawlerPreview = bot;
+    if (!bot) return next();
+    return limiter(req, res, next);
+  };
+}
 
 export function applyApiLimits(app: Express): void {
   // Sized from a measured session (2026-10-08): a guest's first 30 s on Home
@@ -90,6 +116,18 @@ export function applyApiLimits(app: Express): void {
     message: { error: "Rate limit exceeded for this resource. Please try again later." },
   });
   app.use("/api/translate", translateLimiter);
+
+  // Push sign-up: a device signs up again only when its rooms or mutes change,
+  // but one sign-up can carry 200 signature checks and relays for the server
+  // to watch, so it has its own, much smaller bucket.
+  const pushDeviceLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many notification sign-ups from this address. Please try again later." },
+  });
+  app.use("/api/push/device", pushDeviceLimiter);
 
   const gifLimiter = rateLimit({
     windowMs: 60 * 1000,

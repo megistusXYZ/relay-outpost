@@ -31,3 +31,23 @@ export function pipeUpstream(body: Readable, res: Response, maxBytes: number, on
   });
   body.pipe(res);
 }
+
+/**
+ * Whether an upstream answer is a playlist, from its address's PATH or its
+ * declared type. The playlist branch returns text readable by any site, so
+ * `.m3u8` in the query string or fragment never counts: that let any public
+ * page be fetched through this server.
+ */
+export function isPlaylistAnswer(targetUrl: string, contentType: string | null | undefined): boolean {
+  if ((contentType || "").toLowerCase().includes("mpegurl")) return true;
+  try {
+    return new URL(targetUrl).pathname.toLowerCase().endsWith(".m3u8");
+  } catch {
+    return false;
+  }
+}
+
+/** A playlist body starts with #EXTM3U (after an optional byte-order mark and blank space). */
+export function looksLikePlaylist(text: string): boolean {
+  return /^﻿?\s*#EXTM3U/.test(text);
+}

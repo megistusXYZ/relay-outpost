@@ -129,3 +129,29 @@ describe("keeping a device's rooms current", () => {
     expect(await store.get(ENDPOINT)).toMatchObject({ watch: getPublicKey(me), inboxRelays: ["wss://inbox.example"], rooms: [getPublicKey(sk)] });
   });
 });
+
+describe("what a sign-up may carry", () => {
+  it("refuses push keys and addresses far larger than any real one", async () => {
+    const base = await start(memoryPushStore());
+    const url = `${base}/api/push/device`;
+    const big = "A".repeat(40_000);
+    for (const subscription of [
+      { endpoint: ENDPOINT, keys: { p256dh: big, auth: KEYS.auth } },
+      { endpoint: ENDPOINT, keys: { p256dh: KEYS.p256dh, auth: big } },
+      { endpoint: `${ENDPOINT}/${"x".repeat(5000)}`, keys: KEYS },
+    ]) {
+      expect((await post(url, { subscription })).status).toBe(400);
+    }
+    expect((await post(url, { subscription: { endpoint: ENDPOINT, keys: KEYS } })).status).toBe(204);
+  });
+
+  it("keeps no inbox relay at a bare address or a private-network name", async () => {
+    const store = memoryPushStore();
+    const base = await start(store);
+    const me = generateSecretKey();
+    const url = `${base}/api/push/device`;
+    const relays = ["wss://10.0.0.5", "wss://[fd00::1]", "wss://metadata.google.internal", "wss://intranet", "wss://relay.example"];
+    await post(url, { subscription: { endpoint: ENDPOINT, keys: KEYS }, watch: { pubkey: getPublicKey(me), inboxRelays: relays } }, nip98(me, url, "POST"));
+    expect((await store.get(ENDPOINT))?.inboxRelays).toEqual(["wss://relay.example"]);
+  });
+});

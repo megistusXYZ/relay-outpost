@@ -1,5 +1,6 @@
 import type { Express } from "express";
-import { pipeUpstream } from "./stream-proxy";
+import { pipeUpstream, isPlaylistAnswer, looksLikePlaylist } from "./stream-proxy";
+import { crawlerPreviewLimit } from "./api-limits";
 import type { Server } from "http";
 import dns from "dns/promises";
 import RSSParser from "rss-parser";
@@ -27,6 +28,7 @@ import {
   computeTrendSuggestions,
   historyCutoffMs,
   normalizeTrendCategoryKey,
+  isSnapshotCategory,
   shouldCaptureSnapshot,
   toSnapshotEntries,
   SNAPSHOT_TOP_N,
@@ -467,9 +469,13 @@ export async function registerRoutes(
     }
   });
 
-  const nip05Cache = new Map<string, { verified: boolean; ts: number }>();
+  // Bounded for every outcome: failures used to be added without the size cap,
+  // so random identifiers grew this without end.
   const NIP05_CACHE_TTL = 4 * 60 * 60 * 1000;
   const NIP05_CACHE_MAX = 5000;
+  const nip05Cache = new TTLCache<boolean>(NIP05_CACHE_MAX, NIP05_CACHE_TTL);
+  // name@domain: a domain is at most 253 characters, and no real name is long.
+  const NIP05_MAX_LENGTH = 320;
   // A nostr.json answered for one ?name= is small; big providers can still send
   // every name they host, so allow room but never an unbounded read.
   const NIP05_MAX_BYTES = 2 * 1024 * 1024;
@@ -484,12 +490,15 @@ export async function registerRoutes(
       if (!/^[0-9a-f]{64}$/i.test(pubkey)) {
         return res.status(400).json({ error: "Invalid pubkey format" });
       }
+      if (typeof nip05 !== "string" || nip05.length > NIP05_MAX_LENGTH) {
+        return res.status(400).json({ error: "Invalid NIP-05 identifier" });
+      }
 
-      const cacheKey = `${nip05}:${pubkey}`;
+      const cacheKey = `${nip05}:${pubkey.toLowerCase()}`;
       const cached = nip05Cache.get(cacheKey);
-      if (cached && Date.now() - cached.ts < NIP05_CACHE_TTL) {
+      if (cached !== undefined) {
         res.set("Cache-Control", "public, max-age=3600");
-        return res.json({ verified: cached.verified });
+        return res.json({ verified: cached });
       }
 
       let local: string;
@@ -510,7 +519,7 @@ export async function registerRoutes(
 
       const isSafe = await validateHostSafety(domain);
       if (!isSafe) {
-        nip05Cache.set(cacheKey, { verified: false, ts: Date.now() });
+        nip05Cache.set(cacheKey, false);
         return res.json({ verified: false });
       }
 
@@ -525,7 +534,7 @@ export async function registerRoutes(
       const raw = response.ok ? await readBodyCapped(response, NIP05_MAX_BYTES) : null;
       if (!raw) {
         try { await response.body?.cancel(); } catch {}
-        nip05Cache.set(cacheKey, { verified: false, ts: Date.now() });
+        nip05Cache.set(cacheKey, false);
         return res.json({ verified: false });
       }
 
@@ -533,11 +542,7 @@ export async function registerRoutes(
       const names = data?.names;
       const verified = typeof names === "object" && names !== null && (names[local] || "").toLowerCase() === pubkey.toLowerCase();
 
-      nip05Cache.set(cacheKey, { verified, ts: Date.now() });
-      if (nip05Cache.size > NIP05_CACHE_MAX) {
-        const oldest = nip05Cache.keys().next().value;
-        if (oldest) nip05Cache.delete(oldest);
-      }
+      nip05Cache.set(cacheKey, verified);
       res.set("Cache-Control", "public, max-age=3600");
       return res.json({ verified });
     } catch (err: any) {
@@ -554,6 +559,9 @@ export async function registerRoutes(
     try {
       if (!identifier) {
         return res.status(400).json({ error: "Missing identifier parameter", reason: "invalid_identifier" });
+      }
+      if (typeof identifier !== "string" || identifier.length > NIP05_MAX_LENGTH) {
+        return res.status(400).json({ error: "Invalid NIP-05 identifier", reason: "invalid_identifier" });
       }
 
       let local: string;
@@ -575,11 +583,11 @@ export async function registerRoutes(
       const addresses4 = await dns.resolve4(domain).catch(() => [] as string[]);
       const addresses6 = await dns.resolve6(domain).catch(() => [] as string[]);
       const allAddrs = [...addresses4, ...addresses6];
-      if (allAddrs.length === 0) {
+      // One answer for "no such name" and "a name inside a private network":
+      // telling them apart let anyone list the names this server can resolve
+      // internally. Neither is a NIP-05 address anyone can use.
+      if (allAddrs.length === 0 || allAddrs.some(isPrivateIp)) {
         return res.status(404).json({ error: "Domain did not resolve", reason: "dns_failure", domain });
-      }
-      if (allAddrs.some(isPrivateIp)) {
-        return res.status(403).json({ error: "Domain failed safety check", reason: "safety_rejection", domain });
       }
 
       const url = `https://${domain}/.well-known/nostr.json?name=${encodeURIComponent(local)}`;
@@ -1068,7 +1076,15 @@ export async function registerRoutes(
   // drill-ins, or LRU eviction makes most feeds re-parse cold on every load. TTL
   // defaults to 5 min (news); podcasts (which change a few times a week) get a
   // much longer TTL per-entry at set() time.
-  const rssCache = new TTLCache<any>(256, 5 * 60 * 1000);
+  // Bounded by size as well as count: a feed can be up to FEED_MAX_BYTES, and
+  // 256 of those was gigabytes held for anyone who asked for 256 large feeds.
+  const RSS_CACHE_MAX_BYTES = 64 * 1024 * 1024;
+  const RSS_CACHE_MAX_ENTRY_BYTES = 8 * 1024 * 1024;
+  const rssCache = new TTLCache<any>(256, 5 * 60 * 1000, {
+    maxBytes: RSS_CACHE_MAX_BYTES,
+    maxEntryBytes: RSS_CACHE_MAX_ENTRY_BYTES,
+    sizeOf: (feed) => { try { return JSON.stringify(feed).length; } catch { return RSS_CACHE_MAX_ENTRY_BYTES + 1; } },
+  });
   const RSS_NEWS_TTL = 5 * 60 * 1000;
   const RSS_PODCAST_TTL = 30 * 60 * 1000;
 
@@ -1329,6 +1345,7 @@ export async function registerRoutes(
   async function maybeCaptureTrendSnapshot(categoryKey: string, feeds: any[]): Promise<void> {
     try {
       if (!Array.isArray(feeds) || feeds.length === 0) return;
+      if (!isSnapshotCategory(categoryKey)) return; // free text never writes rows
       await seedTrendClock();
       const now = Date.now();
       if (!shouldCaptureSnapshot(trendSnapshotLastCapture.get(categoryKey) ?? null, now)) return;
@@ -1382,7 +1399,7 @@ export async function registerRoutes(
       // Roll this category's snapshot first when stale, so a category the
       // trending route hasn't seen recently still accumulates history.
       await seedTrendClock();
-      if (shouldCaptureSnapshot(trendSnapshotLastCapture.get(categoryKey) ?? null, Date.now())) {
+      if (isSnapshotCategory(categoryKey) && shouldCaptureSnapshot(trendSnapshotLastCapture.get(categoryKey) ?? null, Date.now())) {
         try {
           const { feeds } = await fetchTrendingUpstream(categoryKey, SNAPSHOT_TOP_N, "en");
           await maybeCaptureTrendSnapshot(categoryKey, feeds);
@@ -2580,7 +2597,9 @@ export async function registerRoutes(
         return res.status(upstream.status).json({ error: `Upstream returned ${upstream.status}` });
       }
 
-      const isM3u8 = targetUrl.includes(".m3u8") || (upstream.headers.get("content-type") || "").includes("mpegurl");
+      // From the path or the declared type only, never the query string: this
+      // branch answers with text any site can read (stream-proxy.ts).
+      const isM3u8 = isPlaylistAnswer(targetUrl, upstream.headers.get("content-type"));
 
       if (isM3u8) {
         // M3U8 playlists are small text files. Cap the read so a hostile host
@@ -2610,6 +2629,9 @@ export async function registerRoutes(
           text = Buffer.concat(chunks).toString("utf-8");
         } else {
           text = ""; // no body to read
+        }
+        if (!looksLikePlaylist(text)) {
+          return res.status(415).json({ error: "Not a playlist" });
         }
         const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
         const rewritten = rewriteM3u8(text, baseUrl);
@@ -3459,9 +3481,11 @@ export async function registerRoutes(
     res.status(200).set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" }).end(html);
   });
 
+  // At most 30 bot previews a minute per IP (api-limits.ts); past that, the page
+  // without the relay lookups.
+  app.use(crawlerPreviewLimit(CRAWLER_UA));
   app.use((req, res, next) => {
-    const ua = req.headers["user-agent"] || "";
-    if (!CRAWLER_UA.test(ua)) return next();
+    if (res.locals.crawlerPreview !== true) return next();
 
     const url = req.path;
     const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
