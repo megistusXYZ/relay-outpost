@@ -49,3 +49,19 @@ describe("isAudioSpace — a 30311 whose stream URL is a room page must not reac
     expect(isAudioSpace({ streamUrl: undefined, hlsUrl: undefined })).toBe(false);
   });
 });
+
+describe("audioSpaceFromUrl — a stranger's malformed address", () => {
+  // Live events are published by anyone. A room path with a broken percent
+  // escape made decodeURIComponent throw, and the throw took down the Live list.
+  it("is not a room, and never throws", () => {
+    for (const bad of ["https://cornychat.com/%E0", "https://cornychat.com/%", "https://cornychat.com/room%zz"]) {
+      expect(() => audioSpaceFromUrl(bad), bad).not.toThrow();
+      expect(audioSpaceFromUrl(bad), bad).toBeNull();
+    }
+    expect(() => isAudioSpace({ streamUrl: "https://cornychat.com/%E0", hlsUrl: undefined })).not.toThrow();
+  });
+
+  it("an ordinary encoded room name still decodes", () => {
+    expect(audioSpaceFromUrl("https://cornychat.com/caf%C3%A9")?.room).toBe("café");
+  });
+});

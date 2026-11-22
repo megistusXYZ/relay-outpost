@@ -8,6 +8,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import type { Event as NostrEvent } from "nostr-tools";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
+import { sanitizeFeedHtml } from "@/lib/feed-html";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,7 +111,8 @@ import {
   ImageIcon,
   Pencil,
   Check,
-  Send,} from "lucide-react";
+  Send,
+  Plus,} from "lucide-react";
 import { useTTS } from "@/contexts/TextToSpeechContext";
 import { useAudioPlayer } from "@/contexts/AudioPlayerContext";
 import {
@@ -1061,13 +1063,13 @@ function ArticleReaderDialog({ item, onClose, onShare, isMobile: isMobileProp, i
   const enrichedArticleHtml = useMemo(() => {
     if (!articleContent) return "";
     return enrichArticleHtml(
-      DOMPurify.sanitize(articleContent, { ADD_TAGS: ['figure', 'figcaption', 'picture', 'source', 'iframe', 'video'], ADD_ATTR: ['loading', 'srcset', 'sizes', 'allow', 'allowfullscreen', 'frameborder'] }),
+      sanitizeFeedHtml(articleContent),
       { imageProxy: proxyRssImage },
     );
   }, [articleContent]);
   const enrichedDescriptionHtml = useMemo(() => {
     if (!item.description) return "";
-    return enrichArticleHtml(DOMPurify.sanitize(item.description), { imageProxy: proxyRssImage });
+    return enrichArticleHtml(sanitizeFeedHtml(item.description), { imageProxy: proxyRssImage });
   }, [item.description]);
 
   // Click-to-play: the facade only carries {provider, id}; embedSrcFor
@@ -1800,6 +1802,10 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
   const curated = useCuratedLists();
   const feedParamHandledRef = useRef<string>("");
+  // A feed opened from a ?feed= link that isn't in your news yet: shown, not
+  // saved. Anyone can post such a link, so it is added only when you tap
+  // "Add to your news" (owner, 2026-11-22).
+  const [previewFeed, setPreviewFeed] = useState<SavedFeed | null>(null);
 
   useEffect(() => {
     if (feeds.length === 0) return;
@@ -1808,19 +1814,14 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
     if (feedParam && feedParam !== feedParamHandledRef.current) {
       feedParamHandledRef.current = feedParam;
-      const allKnown = [...DEFAULT_FEEDS, ...EXTRA_DEFAULT_FEEDS, ...curated.suggestedFeeds];
-      const match = feeds.find(f => f.url === feedParam) || allKnown.find(f => f.url === feedParam);
-      if (match) {
-        if (!feeds.some(f => f.url === match.url)) {
-          addFeedToLibrary(match);
-          setFeeds(loadAllFeeds());
-        }
-        setActiveFeedUrl(match.url);
+      if (feeds.some(f => f.url === feedParam)) {
+        setPreviewFeed(null);
+        setActiveFeedUrl(feedParam);
         return;
       }
-      const newFeed: SavedFeed = { name: feedParam.split("/").pop() || "Feed", url: feedParam, category: "Podcast" };
-      addFeedToLibrary(newFeed);
-      setFeeds(loadAllFeeds());
+      const allKnown = [...DEFAULT_FEEDS, ...EXTRA_DEFAULT_FEEDS, ...curated.suggestedFeeds];
+      const known = allKnown.find(f => f.url === feedParam);
+      setPreviewFeed(known ?? { name: feedParam.split("/").pop() || "Feed", url: feedParam, category: "Podcast" });
       setActiveFeedUrl(feedParam);
       return;
     }
@@ -1829,13 +1830,15 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
   }, [feeds, activeFeedUrl, curated.suggestedFeeds]);
 
   // Persist the last picker choice ("" = All feeds) so News reopens where it was.
+  // Never a previewed feed: nothing from a link is kept until it is added.
   useEffect(() => {
+    if (activeFeedUrl && !feeds.some(f => f.url === activeFeedUrl)) return;
     try {
       localStorage.setItem(RSS_ACTIVE_FEED_KEY, activeFeedUrl);
     } catch {
       /* ignore */
     }
-  }, [activeFeedUrl]);
+  }, [activeFeedUrl, feeds]);
 
   const [feedPopoverOpen, setFeedPopoverOpen] = useState(false);
 
@@ -1851,7 +1854,11 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
 
   const existingUrls = useMemo(() => new Set(feeds.map(f => f.url)), [feeds]);
 
-  const activeFeed = useMemo(() => feeds.find(f => f.url === activeFeedUrl), [feeds, activeFeedUrl]);
+  const activeFeed = useMemo(
+    () => feeds.find(f => f.url === activeFeedUrl) ?? (previewFeed?.url === activeFeedUrl ? previewFeed : undefined),
+    [feeds, activeFeedUrl, previewFeed],
+  );
+  const previewing = !!previewFeed && previewFeed.url === activeFeedUrl && !feeds.some(f => f.url === activeFeedUrl);
 
   // Clear any active source filter when switching feeds (the authors differ per feed).
   useEffect(() => { setSourceFilter(null); }, [activeFeedUrl]);
@@ -3115,6 +3122,21 @@ export default function RSSFeed({ embedded = false }: { embedded?: boolean } = {
                     >
                       <ExternalLink className="w-3 h-3" /> Website
                     </a>
+                  )}
+                  {previewing && previewFeed && (
+                    <div className="mt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          addFeedToLibrary({ ...previewFeed, name: feedData?.title || previewFeed.name });
+                          setFeeds(loadAllFeeds());
+                          setPreviewFeed(null);
+                        }}
+                        data-testid="button-add-previewed-feed"
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Add to your news
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

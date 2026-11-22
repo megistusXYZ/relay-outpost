@@ -22,7 +22,13 @@ interface Brand {
   label: string | null;
 }
 
-function brandFor(rawUrl: string): Brand {
+/** The host itself or one of its subdomains, never a look-alike like "github.evil.example". */
+function onSite(host: string, site: string): boolean {
+  return host === site || host.endsWith(`.${site}`);
+}
+
+/** The brand label for a profile's website, only when the address is that brand's own site. */
+export function brandFor(rawUrl: string): Brand {
   let host = "";
   try {
     host = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`).hostname.replace(/^www\./, "");
@@ -30,11 +36,11 @@ function brandFor(rawUrl: string): Brand {
     host = rawUrl;
   }
   const h = host.toLowerCase();
-  if (h.includes("github.")) return { Icon: Github, tint: "text-foreground", label: "GitHub" };
-  if (h === "x.com" || h.includes("twitter.")) return { Icon: Twitter, tint: "text-muted-foreground", label: "X" };
-  if (h.includes("youtube.") || h === "youtu.be") return { Icon: Youtube, tint: "text-muted-foreground", label: "YouTube" };
-  if (h.includes("t.me") || h.includes("telegram.")) return { Icon: Send, tint: "text-muted-foreground", label: "Telegram" };
-  if (h.includes("fountain.fm")) return { Icon: Zap, tint: "text-muted-foreground", label: "Fountain" };
+  if (onSite(h, "github.com")) return { Icon: Github, tint: "text-foreground", label: "GitHub" };
+  if (onSite(h, "x.com") || onSite(h, "twitter.com")) return { Icon: Twitter, tint: "text-muted-foreground", label: "X" };
+  if (onSite(h, "youtube.com") || h === "youtu.be") return { Icon: Youtube, tint: "text-muted-foreground", label: "YouTube" };
+  if (h === "t.me" || onSite(h, "telegram.me") || onSite(h, "telegram.org")) return { Icon: Send, tint: "text-muted-foreground", label: "Telegram" };
+  if (onSite(h, "fountain.fm")) return { Icon: Zap, tint: "text-muted-foreground", label: "Fountain" };
   // Generic host: neutral chain/link glyph that matches the other Details-row icons.
   return { Icon: LinkIcon, tint: "text-muted-foreground", label: null };
 }
