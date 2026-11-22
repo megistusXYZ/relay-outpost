@@ -217,7 +217,9 @@ export function registerConcordAvRoutes(app: Express, opts: {
       apiKey: process.env.LIVEKIT_API_KEY ?? "",
       apiSecret: process.env.LIVEKIT_API_SECRET ?? "",
       livekitUrl: process.env.LIVEKIT_URL ?? "",
-      admit: (r) => capacity.admit(r, Date.now()),
+      // The caller's address caps how many rooms it can have waiting to start
+      // (call-capacity.ts); behind one proxy, req.ip is the client (trust proxy 1).
+      admit: (r) => capacity.admit(r, Date.now(), req.ip),
     });
     if (result.status === 200 && !wasRunning) void Promise.resolve(opts.onCallStarted?.(room)).catch(() => {});
     return res.status(result.status).json(result.body);

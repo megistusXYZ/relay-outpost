@@ -165,6 +165,19 @@ export async function encryptAndUploadDmFile(
 }
 
 // ── decrypt to a cached object URL (I/O) ─────────────────────────────────────
+
+/**
+ * The type a received file's blob is given. The blob lives on this site's own
+ * origin and the sender chose the type, so a page ("text/html"), an SVG or a
+ * script would open as this site. Only picture, video and sound types are
+ * kept (they show and play in the chat); anything else is plain bytes, which
+ * a browser downloads instead of showing.
+ */
+const SHOWABLE_FILE_TYPE = /^(image\/(jpeg|png|gif|webp|avif|heic|heif)|video\/(mp4|webm|quicktime|ogg)|audio\/(mpeg|mp4|ogg|wav|webm|aac|flac|x-m4a))$/;
+export function receivedFileBlobType(mime: string | undefined): string {
+  const t = (mime ?? "").split(";")[0].trim().toLowerCase();
+  return SHOWABLE_FILE_TYPE.test(t) ? t : "application/octet-stream";
+}
 const blobUrlCache = new Map<string, string>(); // ciphertext url → object url
 
 /**
@@ -185,7 +198,7 @@ export async function resolveDmFileUrl(ref: DmFileRef): Promise<string> {
     ck,
     ct,
   );
-  const url = URL.createObjectURL(new Blob([plain], { type: ref.mime || "application/octet-stream" }));
+  const url = URL.createObjectURL(new Blob([plain], { type: receivedFileBlobType(ref.mime) }));
   blobUrlCache.set(ref.url, url);
   return url;
 }

@@ -4,7 +4,7 @@
  * one room, from using up the media server for everyone.
  */
 import { describe, it, expect } from "vitest";
-import { createCallCapacity } from "./call-capacity";
+import { createCallCapacity, JOIN_WINDOW_MS, MAX_WAITING_PER_ADDRESS } from "./call-capacity";
 
 const room = (n: number) => n.toString(16).padStart(64, "0");
 const T = 1_789_240_000_000; // ms
@@ -50,5 +50,54 @@ describe("call limits", () => {
     await caps.refresh(T);
     expect(caps.admit(room(1), T + 1)).toEqual({ ok: true });
     expect(caps.usage(T + 2)).toEqual({ calls: 1, max: 1 });
+  });
+});
+
+/**
+ * A token counted its room as running for a minute even if no one joined, so
+ * one person asking for tokens to throwaway rooms (a key is a room) from two
+ * addresses kept every slot taken: everyone else's new call was "busy".
+ */
+describe("rooms no one joins", () => {
+  it("stop counting after the join window once the media server says they aren't running", async () => {
+    const caps = createCallCapacity({ maxCalls: 3, seatsPerRoomPerMinute: 30, liveRooms: async () => new Set() });
+    await caps.refresh(T);
+    for (let i = 1; i <= 3; i++) expect(caps.admit(room(i), T + i, `a${i}`)).toEqual({ ok: true });
+    expect(caps.admit(room(9), T + 10, "z").ok).toBe(false);
+    // The media server is asked again after the join window: none of them started.
+    await caps.refresh(T + JOIN_WINDOW_MS + 100);
+    expect(caps.admit(room(9), T + JOIN_WINDOW_MS + 200, "z")).toEqual({ ok: true });
+  });
+
+  it("a room someone did join keeps counting", async () => {
+    let live = new Set<string>();
+    const caps = createCallCapacity({ maxCalls: 1, seatsPerRoomPerMinute: 30, liveRooms: async () => live });
+    await caps.refresh(T);
+    expect(caps.admit(room(1), T + 1, "a")).toEqual({ ok: true });
+    live = new Set([room(1)]);
+    await caps.refresh(T + JOIN_WINDOW_MS + 100);
+    expect(caps.admit(room(2), T + JOIN_WINDOW_MS + 200, "b").ok).toBe(false);
+  });
+});
+
+describe("one address", () => {
+  it("can have at most MAX_WAITING_PER_ADDRESS rooms waiting for someone to join", async () => {
+    const caps = createCallCapacity({ maxCalls: 50, seatsPerRoomPerMinute: 30, liveRooms: async () => new Set() });
+    await caps.refresh(T);
+    for (let i = 0; i < MAX_WAITING_PER_ADDRESS; i++) expect(caps.admit(room(i + 1), T + i, "1.2.3.4")).toEqual({ ok: true });
+    expect(caps.admit(room(99), T + 10, "1.2.3.4")).toEqual({ ok: false, reason: "busy" });
+    // Someone else is unaffected, and a room already started takes more seats.
+    expect(caps.admit(room(98), T + 11, "5.6.7.8")).toEqual({ ok: true });
+    expect(caps.admit(room(1), T + 12, "1.2.3.4")).toEqual({ ok: true });
+  });
+
+  it("frees a waiting slot once that room is running", async () => {
+    let live = new Set<string>();
+    const caps = createCallCapacity({ maxCalls: 50, seatsPerRoomPerMinute: 30, liveRooms: async () => live });
+    await caps.refresh(T);
+    for (let i = 0; i < MAX_WAITING_PER_ADDRESS; i++) caps.admit(room(i + 1), T + i, "1.2.3.4");
+    live = new Set([room(1)]);
+    await caps.refresh(T + 16_000);
+    expect(caps.admit(room(99), T + 16_100, "1.2.3.4")).toEqual({ ok: true });
   });
 });

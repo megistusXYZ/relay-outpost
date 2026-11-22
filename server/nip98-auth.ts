@@ -8,7 +8,29 @@ import { verifyEvent } from "nostr-tools";
 
 const MAX_AGE_SECONDS = 60; // seconds of created_at skew tolerated
 
-export function verifyNip98(req: any): { pubkey: string } | { status: number; error: string } {
+/** This site's own origins (ALLOWED_ORIGINS, e.g. "https://relayop.xyz"); empty on a laptop. */
+function siteOrigins(): string[] {
+  return (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+}
+
+/**
+ * Whether a token's URL is for this site. With origins configured (production)
+ * it must be one of them, scheme and port included; without (a laptop) its
+ * host must be the one the request came to. A token signed for another site
+ * with the same paths (another copy of this server, a custom scheduler) must
+ * not work here.
+ */
+function isThisSite(tokenUrl: URL, req: any, origins: string[]): boolean {
+  if (origins.length > 0) {
+    return origins.some((o) => {
+      try { return new URL(o).origin.toLowerCase() === tokenUrl.origin.toLowerCase(); } catch { return false; }
+    });
+  }
+  const host = String(req.headers?.host ?? "").toLowerCase();
+  return !!host && tokenUrl.host.toLowerCase() === host;
+}
+
+export function verifyNip98(req: any, opts: { origins?: string[] } = {}): { pubkey: string } | { status: number; error: string } {
   const header: string | undefined = req.headers["authorization"];
   if (!header || !header.startsWith("Nostr ")) {
     return { status: 401, error: "Missing NIP-98 Authorization header" };
@@ -41,15 +63,15 @@ export function verifyNip98(req: any): { pubkey: string } | { status: number; er
     return { status: 401, error: "Auth method mismatch" };
   }
 
-  // Bind the token to this endpoint by path; compare pathname only so the
-  // proxy host and query string don't cause spurious mismatches.
-  let tokenPath: string;
+  // Bind the token to this site and this endpoint's path (the query string
+  // is not compared).
+  let tokenUrl: URL;
   try {
-    tokenPath = new URL(uTag).pathname;
+    tokenUrl = new URL(uTag);
   } catch {
     return { status: 401, error: "Invalid u tag" };
   }
-  if (tokenPath !== req.path) {
+  if (!isThisSite(tokenUrl, req, opts.origins ?? siteOrigins()) || tokenUrl.pathname !== req.path) {
     return { status: 401, error: "Auth URL mismatch" };
   }
 
