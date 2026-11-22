@@ -18,15 +18,20 @@
  * type="submit".
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
-import { globSync } from "glob";
+import { readFileSync, readdirSync } from "fs";
+/** Every .tsx under client/src, as cwd-relative paths (what glob returned; dot folders skipped). */
+function appTsxFiles(): string[] {
+  return readdirSync("client/src", { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".tsx") && !f.split(/[\\/]/).some((part) => part.startsWith(".")))
+    .map((f) => `client/src/${f.split("\\").join("/")}`);
+}
 
 interface Violation { file: string; line: number; attrs: string }
 
 function scan(): { forms: number; violations: Violation[] } {
   let forms = 0;
   const violations: Violation[] = [];
-  for (const file of globSync("client/src/**/*.tsx")) {
+  for (const file of appTsxFiles()) {
     const src = readFileSync(file, "utf8");
     for (const m of src.matchAll(/<form\b/g)) {
       forms++;

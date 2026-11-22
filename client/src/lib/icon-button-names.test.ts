@@ -16,8 +16,13 @@
  * Prove it can fail: drop the aria-label from the composer's poll button.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { globSync } from "glob";
+import { readFileSync, readdirSync } from "node:fs";
+/** Every .tsx under client/src, as cwd-relative paths (what glob returned; dot folders skipped). */
+function appTsxFiles(): string[] {
+  return readdirSync("client/src", { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".tsx") && !f.split(/[\\/]/).some((part) => part.startsWith(".")))
+    .map((f) => `client/src/${f.split("\\").join("/")}`);
+}
 
 /** Unnamed icon buttons across the app on 2026-10-10, after the composer and hub were named (was 105). */
 const BASELINE = 101;
@@ -66,7 +71,7 @@ function unnamedIconButtons(src: string): number {
 }
 
 describe("icon-only buttons have a name", () => {
-  const files = globSync("client/src/**/*.tsx");
+  const files = appTsxFiles();
   const counts = new Map(files.map((f) => [f, unnamedIconButtons(readFileSync(f, "utf8"))]));
 
   it("the scanner finds icon buttons at all", () => {

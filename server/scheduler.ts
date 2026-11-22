@@ -2,15 +2,15 @@ import { db } from "./db";
 import { scheduledPosts } from "@shared/schema";
 import { eq, lte, and } from "drizzle-orm";
 import { Relay } from "nostr-tools";
-import WebSocket from "ws";
 import { connectScheduledRelay } from "./scheduled-relays";
+import { CappedWebSocket } from "./relay-socket";
 
-(globalThis as any).WebSocket = WebSocket;
+// nostr-tools opens its sockets with the global; give it the capped one.
+(globalThis as any).WebSocket = CappedWebSocket;
 
 const BATCH_SIZE = 20;
 const PUBLISH_DELAY_MS = 500;
 const CRON_INTERVAL_MS = 60_000;
-const RELAY_CONNECT_TIMEOUT_MS = 8_000;
 const MAX_PUBLISH_RETRIES = 2;
 const RETRY_DELAY_MS = 3_000;
 
@@ -18,9 +18,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function connectRelay(url: string, timeoutMs = RELAY_CONNECT_TIMEOUT_MS): Promise<Relay | null> {
+async function connectRelay(url: string): Promise<Relay | null> {
   try {
-    // Re-checks where the name points now, not just when it was scheduled.
+    // Re-checks where the name points now, not just when it was scheduled,
+    // and gives up on a relay that doesn't finish connecting in time
+    // (RELAY_CONNECT_TIMEOUT_MS), so one stalled relay can't hold the run.
     const relay = await connectScheduledRelay(url);
     if (!relay) console.warn(`[Scheduler] Refused relay address ${url}`);
     return relay;
