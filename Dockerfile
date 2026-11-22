@@ -39,8 +39,8 @@ WORKDIR /app
 # silently ships old native binaries. Fallback if this targeted install ever
 # misbehaves: replace it with `COPY --from=build /app/node_modules ./node_modules`.
 RUN npm install --no-save --no-audit --no-fund \
-      sharp@0.35.4 jsdom@28.1.0 @mozilla/readability@0.6.0 \
-      drizzle-kit@0.31.10 drizzle-orm@0.45.2 drizzle-zod@0.7.0 zod@3.24.2 pg@8.16.3 \
+      sharp@0.35.5 jsdom@28.1.0 @mozilla/readability@0.6.0 \
+      drizzle-kit@0.31.10 drizzle-orm@0.45.2 drizzle-zod@0.7.0 zod@3.25.76 pg@8.16.3 \
  && npm cache clean --force
 COPY package.json drizzle.config.ts ./
 COPY shared ./shared

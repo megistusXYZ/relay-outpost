@@ -8,12 +8,16 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 
 vi.mock("./net-safety", () => ({
   resolveVettedAddresses: async (host: string) => (host === "public.test" ? ["127.0.0.1"] : null),
 }));
 
-import { safeFetch, readBodyCapped, SafeFetchBlocked } from "./safe-fetch";
+import { safeFetch, readBodyCapped, readJsonCapped, SafeFetchBlocked } from "./safe-fetch";
+
+const BOMB_EXPANDED = 32 * 1024 * 1024;
+const BOMB = gzipSync(Buffer.alloc(BOMB_EXPANDED, 0x20), { level: 9 });
 
 let server: http.Server;
 let base = "";
@@ -56,6 +60,16 @@ beforeAll(async () => {
       res.write("a");
       setTimeout(() => res.end("b"), 400);
       return;
+    }
+    if (req.url === "/gzip-bomb") {
+      // A few dozen KB on the wire that expand to 32 MB, with an honest
+      // (small) content-length: only counting expanded bytes stops it.
+      res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip", "content-length": String(BOMB.length) });
+      return res.end(BOMB);
+    }
+    if (req.url === "/small-json") {
+      res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" });
+      return res.end(gzipSync(JSON.stringify({ callback: "https://pay.example/cb", minSendable: 1000 })));
     }
     if (req.url === "/declared-big") {
       res.writeHead(200, { "content-type": "application/octet-stream", "content-length": String(10 * 1024 * 1024) });
@@ -136,5 +150,31 @@ describe("readBodyCapped", () => {
 
   it("returns null without reading when the declared length is over the cap", async () => {
     expect(await readBodyCapped(await safeFetch(`${base}/declared-big`), 1024)).toBeNull();
+  });
+
+  // A reply that is small on the wire and huge once inflated. The declared
+  // length is honest and tiny, so only counting inflated bytes stops it.
+  it("the compressed reply really inflates when read whole (or the next check proves nothing)", async () => {
+    expect(BOMB.length).toBeLessThan(256 * 1024);
+    const whole = await (await safeFetch(`${base}/gzip-bomb`)).arrayBuffer();
+    expect(whole.byteLength).toBe(BOMB_EXPANDED);
+  });
+
+  it("counts inflated bytes: a compressed reply that expands past the cap returns null", async () => {
+    expect(await readBodyCapped(await safeFetch(`${base}/gzip-bomb`), 1024 * 1024)).toBeNull();
+  });
+});
+
+describe("readJsonCapped", () => {
+  it("parses a reply that fits", async () => {
+    expect(await readJsonCapped(await safeFetch(`${base}/small-json`), 64 * 1024)).toEqual({ callback: "https://pay.example/cb", minSendable: 1000 });
+  });
+
+  it("returns null for a reply over the cap, counting inflated bytes", async () => {
+    expect(await readJsonCapped(await safeFetch(`${base}/gzip-bomb`), 1024 * 1024)).toBeNull();
+  });
+
+  it("throws on a reply that isn't JSON, like response.json() does", async () => {
+    await expect(readJsonCapped(await safeFetch(`${base}/ok`), 1024)).rejects.toThrow();
   });
 });

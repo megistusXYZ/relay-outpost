@@ -12,6 +12,7 @@
  * (`limit: 0`) rather than by date, and remembers ids it has already seen.
  */
 import WebSocket from "ws";
+import { openRelaySocket } from "../relay-socket";
 import { verifyEvent, type Event } from "nostr-tools";
 import { isJunkRelay } from "../../shared/relay-junk";
 import type { PushDevice, PushDeviceStore } from "./push-devices";
@@ -44,7 +45,7 @@ export function createMessageWatcher(o: {
 
   const connect = (url: string, c: RelayConn) => {
     let ws: WebSocket;
-    try { ws = new WebSocket(url); } catch { return retry(url, c); }
+    try { ws = openRelaySocket(url); } catch { return retry(url, c); }
     c.ws = ws;
     ws.on("open", () => { c.retryMs = 5_000; req(c); });
     ws.on("message", (raw) => {

@@ -15,6 +15,7 @@
  * that couldn't be read to the end.
  */
 import WebSocket from "ws";
+import { openRelaySocket } from "./relay-socket";
 import { rankServicesFromMap, scoresFromCards, ranksFromCards, trustedAuthorsFromRanks, KIND_TRUST_MAP, KIND_SCORE_CARD } from "@shared/nip85";
 
 export interface RelayAnswer {
@@ -42,7 +43,7 @@ export const queryRelay: RelayQuery = (relay, filter, timeoutMs = 6_000) =>
     };
     const timer = setTimeout(() => finish(false), timeoutMs);
     try {
-      ws = new WebSocket(relay);
+      ws = openRelaySocket(relay);
     } catch {
       finish(false);
       return;

@@ -20,7 +20,7 @@ import { vapidFromEnv, webPushSend } from "./push/push-send";
 import { scheduledPosts, podcastTrendSnapshots } from "@shared/schema";
 import { resolveBuzzDirectory } from "@shared/buzz-directory";
 import { safeStreamContentType, safeImageContentType, isRelayableStreamType } from "./media-safety";
-import { safeFetch, readBodyCapped, SafeFetchBlocked, type SafeResponse } from "./safe-fetch";
+import { safeFetch, readBodyCapped, readJsonCapped, readTextCapped, SafeFetchBlocked, type SafeResponse } from "./safe-fetch";
 import { applyNip86Proxy } from "./nip86-proxy";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
 import {
@@ -48,7 +48,7 @@ async function loadDomModules() {
     console.warn("jsdom/readability not available, article extraction disabled");
   }
 }
-import WebSocket from "ws";
+import { openRelaySocket } from "./relay-socket";
 import { nip19 } from "nostr-tools";
 import { verifyNip98 } from "./nip98-auth";
 
@@ -628,6 +628,10 @@ export async function registerRoutes(
     }
   });
 
+  // A lightning address's pay details and invoice are small JSON; metadata can
+  // carry a base64 picture, so this leaves room for one.
+  const LNURL_MAX_BYTES = 1024 * 1024;
+
   app.get("/api/lnurl/pay", async (req, res) => {
     try {
       const address = req.query.address as string;
@@ -651,7 +655,7 @@ export async function registerRoutes(
         // internal response back through res.json(data).
         const response = await safeFetch(url, { timeoutMs: 10000 });
         if (!response.ok) {
-          const body = await response.text().catch(() => "");
+          const body = await readTextCapped(response, 2048).catch(() => "");
           console.error(`[lnurl/pay] Upstream ${response.status} from ${url}: ${body.slice(0, 500)}`);
           if (response.status >= 500 && retryCount < 1) {
             await new Promise(r => setTimeout(r, 1000));
@@ -660,7 +664,13 @@ export async function registerRoutes(
           res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). They may be temporarily unavailable.` });
           return;
         }
-        const data = await response.json();
+        // Capped: the provider is whoever the address names, and a whole-body
+        // read let a small compressed reply fill the server's memory.
+        const data = await readJsonCapped(response, LNURL_MAX_BYTES);
+        if (data === null) {
+          res.status(502).json({ error: "The recipient's lightning provider sent a reply that is too large." });
+          return;
+        }
         res.json(data);
       };
       await attempt(0);
@@ -693,7 +703,7 @@ export async function registerRoutes(
         // reflected back through res.json(data).
         const response = await safeFetch(url.toString(), { timeoutMs: 15000 });
         if (!response.ok) {
-          const body = await response.text().catch(() => "");
+          const body = await readTextCapped(response, 2048).catch(() => "");
           console.error(`[lnurl/invoice] Upstream ${response.status} from ${url.toString().slice(0, 200)}: ${body.slice(0, 500)}`);
           if (response.status >= 500 && retryCount < 1) {
             await new Promise(r => setTimeout(r, 1000));
@@ -702,7 +712,11 @@ export async function registerRoutes(
           res.status(502).json({ error: `The recipient's lightning provider returned an error (${response.status}). The zap could not be completed.` });
           return;
         }
-        const data = await response.json();
+        const data = await readJsonCapped(response, LNURL_MAX_BYTES);
+        if (data === null) {
+          res.status(502).json({ error: "The recipient's lightning provider sent a reply that is too large." });
+          return;
+        }
         res.json(data);
       };
       await attempt(0);
@@ -2069,9 +2083,11 @@ export async function registerRoutes(
         return res.status(502).json({ error: "Failed to fetch article" });
       }
 
+      // Read at most this much (counted after decompression), not the whole
+      // body then a slice of it: the article URL is anyone's choice.
       const MAX_BODY = 2 * 1024 * 1024;
-      const rawBody = await response.arrayBuffer();
-      const html = new TextDecoder().decode(rawBody.slice(0, MAX_BODY));
+      const rawBody = await readBodyCapped(response, MAX_BODY, { truncate: true });
+      const html = rawBody ? rawBody.toString("utf8") : "";
 
       await loadDomModules();
       if (!JSDOM || !Readability) {
@@ -2593,7 +2609,7 @@ export async function registerRoutes(
           }
           text = Buffer.concat(chunks).toString("utf-8");
         } else {
-          text = await upstream.text();
+          text = ""; // no body to read
         }
         const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
         const rewritten = rewriteM3u8(text, baseUrl);
@@ -2630,11 +2646,7 @@ export async function registerRoutes(
       res.set("Access-Control-Allow-Origin", "*");
 
       if (!upstream.body) {
-        const buffer = Buffer.from(await upstream.arrayBuffer());
-        if (buffer.length > MAX_PROXY_BYTES) {
-          return res.status(413).json({ error: "Upstream response too large" });
-        }
-        return res.send(buffer);
+        return res.send(Buffer.alloc(0)); // no body to relay
       }
 
       const { Readable } = await import("stream");
@@ -2844,7 +2856,9 @@ export async function registerRoutes(
     fetchJson: async (url) => {
       const r = await safeFetch(url, { timeoutMs: 8000 });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
+      const data = await readJsonCapped(r, 256 * 1024);
+      if (data === null) throw new Error("price reply too large");
+      return data;
     },
   });
   app.get("/api/btc/price", async (_req, res) => {
@@ -3373,7 +3387,7 @@ export async function registerRoutes(
 
       for (const relay of relays) {
         try {
-          const ws = new WebSocket(relay);
+          const ws = openRelaySocket(relay);
           const subId = `og_${Date.now().toString(36)}`;
           let closed = false;
           const cleanup = () => { if (!closed) { closed = true; try { ws.close(); } catch {} } };

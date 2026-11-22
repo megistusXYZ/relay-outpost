@@ -7,8 +7,11 @@
  */
 import type { Express } from "express";
 import { NIP86_METHODS } from "@shared/nip86-methods";
-import { safeFetch } from "./safe-fetch";
+import { safeFetch, readBodyCapped } from "./safe-fetch";
 import { validateHostSafety } from "./net-safety";
+
+/** A relay management reply (ban lists can run long); past this it is refused. */
+const NIP86_MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * `fetcher` is production's safeFetch (SSRF-checked, pinned). Only the wire
@@ -94,7 +97,10 @@ export function applyNip86Proxy(app: Express, { fetcher = safeFetch }: { fetcher
             timeoutMs: 10000,
           });
 
-          const responseText = await response.text();
+          // Capped (counted after decompression): the relay is the caller's choice.
+          const capped = await readBodyCapped(response, NIP86_MAX_BYTES);
+          if (capped === null) throw new Error("relay management reply too large");
+          const responseText = capped.toString("utf8");
           // Don't log the response body — relay-admin responses can carry
           // sensitive management data. Status + content-type are enough to debug.
           console.log(`[NIP-86 proxy] ← status=${response.status} | content-type=${response.headers.get("content-type")} | len=${responseText.length}`);

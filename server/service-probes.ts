@@ -4,6 +4,7 @@
  * yes or no: "answered with nothing" is its own state.
  */
 import WebSocket from "ws";
+import { openRelaySocket } from "./relay-socket";
 import type { CheckResult } from "./service-health";
 
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -29,7 +30,7 @@ function ask(
     };
     const timer = setTimeout(() => finish(false), timeoutMs);
     try {
-      ws = new WebSocket(url, { handshakeTimeout: timeoutMs });
+      ws = openRelaySocket(url, { handshakeTimeout: timeoutMs });
     } catch (e) {
       finish(false, String((e as Error).message || e));
       return;
@@ -92,7 +93,7 @@ export function probeDirectory(url: string, knownPubkeys: readonly string[], opt
     };
     const timer = setTimeout(finish, timeoutMs);
     try {
-      ws = new WebSocket(url, { handshakeTimeout: timeoutMs });
+      ws = openRelaySocket(url, { handshakeTimeout: timeoutMs });
     } catch {
       finish();
       return;

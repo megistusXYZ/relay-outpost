@@ -189,3 +189,21 @@ export async function readBodyCapped(
   }
   return Buffer.concat(chunks);
 }
+
+/**
+ * `response.json()` with a cap: null when the body (counted after it is
+ * inflated) is over `maxBytes`; throws on malformed JSON, as `json()` does.
+ * A whole-body read of a reply from a site someone else chose lets a few KB
+ * of gzip become gigabytes in memory.
+ */
+export async function readJsonCapped<T = unknown>(resp: BodySource, maxBytes: number): Promise<T | null> {
+  const buf = await readBodyCapped(resp, maxBytes);
+  if (buf === null) return null;
+  return JSON.parse(buf.toString("utf8")) as T;
+}
+
+/** `response.text()` with a cap, cut at `maxBytes`: for error details and logs. */
+export async function readTextCapped(resp: BodySource, maxBytes: number): Promise<string> {
+  const buf = await readBodyCapped(resp, maxBytes, { truncate: true });
+  return buf ? buf.toString("utf8") : "";
+}
