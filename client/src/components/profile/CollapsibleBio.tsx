@@ -1,24 +1,23 @@
-import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { condenseBio } from "@/lib/condense-bio";
-import { FullBioContext } from "./phone-about";
 
 /**
- * A profile bio on a phone: at most three lines, blank lines squeezed out, so
- * every profile reads the same length (owner, 2026-09-29). "Show more" appears
- * only when there's more, and gives back the author's own layout. Wider
- * screens show the bio as written, and so does a phone's About (the place
- * you go to read all of it).
+ * A profile bio on a phone: at most two lines, blank lines squeezed out, so
+ * every profile reads the same length and the posts start high (owner,
+ * 2026-11-22). "more" appears only when there's more, and opens the bio right
+ * there in the author's own layout; "less" folds it back. It never moves the
+ * page or changes what the stream shows. Wider
+ * screens show the bio as written.
  */
 export function CollapsibleBio({ text, render }: { text: string; render: (text: string) => ReactNode }) {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
-  const whole = useContext(FullBioContext);
-  const collapsed = isMobile && !whole && !expanded;
+  const collapsed = isMobile && !expanded;
 
-  // Measured, not guessed: the toggle shows only when the three lines hide text.
+  // Measured, not guessed: the toggle shows only when the two lines hide text.
   useLayoutEffect(() => {
     const el = boxRef.current;
     if (!el || !collapsed) return;
@@ -29,11 +28,11 @@ export function CollapsibleBio({ text, render }: { text: string; render: (text: 
     return () => ro?.disconnect();
   }, [collapsed, text]);
 
-  if (!isMobile || whole) return <>{render(text)}</>;
+  if (!isMobile) return <>{render(text)}</>;
 
   return (
     <div>
-      <div ref={boxRef} className={collapsed ? "line-clamp-3" : undefined} data-testid="profile-bio">
+      <div ref={boxRef} className={collapsed ? "line-clamp-2" : undefined} data-testid="profile-bio">
         {render(collapsed ? condenseBio(text) : text)}
       </div>
       {(overflows || expanded) && (
@@ -44,7 +43,7 @@ export function CollapsibleBio({ text, render }: { text: string; render: (text: 
           className="-my-2 inline-flex min-h-11 items-center pr-3 text-[13px] font-medium text-brand hover:text-brand-strong"
           data-testid="button-bio-more"
         >
-          {expanded ? "Show less" : "Show more"}
+          {expanded ? "less" : "more"}
         </button>
       )}
     </div>

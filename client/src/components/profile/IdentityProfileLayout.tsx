@@ -28,8 +28,7 @@ import { Pencil } from "lucide-react";
 import { getPetname, usePetnamesVersion } from "@/lib/petnames";
 import { PetnameDialog } from "@/components/PetnameDialog";
 import { DetailLink, linkifyBio } from "@/components/profile/ProfileDetailLink";
-import { PhoneAboutContext, FullBioContext } from "@/components/profile/phone-about";
-import { condenseBio } from "@/lib/condense-bio";
+import { PhoneAboutContext } from "@/components/profile/phone-about";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { CalendarDays } from "lucide-react";
 import { IdentityCounts } from "@/components/profile/IdentityPresence";
@@ -186,8 +185,9 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
 
   // The sections under the head. Desktop draws them in the rail; a phone
   // draws them under the stream's About chip, so the posts come first.
-  const [aboutRequest, setAboutRequest] = useState(0);
-  const hasSections = !!(circleSlot || communitiesSlot || badgesSlot || vouchSlot || data.about || data.website || data.lud16 || joined);
+  // A phone shows the bio in the head, so About's Details carries the rest.
+  const bioInDetails = !isMobile && !!(data.aboutNode || data.about);
+  const hasSections = !!(circleSlot || communitiesSlot || badgesSlot || vouchSlot || bioInDetails || data.website || data.lud16 || joined);
   const sections = (
     <>
           {/* People you follow who follow THIS profile — real social proof (not
@@ -211,10 +211,10 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
           )}
 
           {/* Details */}
-          {(data.about || data.website || data.lud16 || joined) && (
+          {(bioInDetails || data.website || data.lud16 || joined) && (
             <Section title="Details">
               <div className="space-y-2.5">
-                {data.aboutNode ?? (data.about && <p className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed">{linkifyBio(data.about)}</p>)}
+                {bioInDetails && (data.aboutNode ?? (data.about && <p className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed">{linkifyBio(data.about)}</p>))}
                 <dl className="space-y-1.5 text-[13px]">
                   {data.website && <DetailLink url={data.website} />}
                   {data.lud16 && (
@@ -345,18 +345,10 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
           {isMobile && headActions ? (
             <>
               <div className="-mt-1" data-testid="identity-actions-row">{headActions}</div>
-              {/* Who this is, in two lines; the rest is one tap away in About. */}
-              {data.about && (
-                <div className="px-3">
-                  <p className="text-sm text-foreground/85 break-words leading-relaxed line-clamp-2" data-testid="profile-bio-brief">{linkifyBio(condenseBio(data.about))}</p>
-                  <button
-                    type="button"
-                    onClick={() => setAboutRequest((n) => n + 1)}
-                    className="-my-2 inline-flex min-h-11 items-center pr-3 text-[13px] font-medium text-brand hover:text-brand-strong"
-                    data-testid="button-bio-about"
-                  >
-                    more
-                  </button>
+              {/* Who this is, in two lines; "more" opens the rest right here. */}
+              {(data.aboutNode || data.about) && (
+                <div className="px-3" data-testid="profile-bio-head">
+                  {data.aboutNode ?? <p className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed">{linkifyBio(data.about!)}</p>}
                 </div>
               )}
             </>
@@ -414,7 +406,7 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
         <main className="min-w-0">
           {/* Follower counts live under the name (IdentityCounts); the main
               column opens with the quiet totals line and the media shelf. */}
-          <PhoneAboutContext.Provider value={isMobile ? { sections: <FullBioContext.Provider value={true}><div className="space-y-4">{sections}</div></FullBioContext.Provider>, hasSections, openRequest: aboutRequest } : null}>
+          <PhoneAboutContext.Provider value={isMobile ? { sections: <div className="space-y-4">{sections}</div>, hasSections } : null}>
             {children}
           </PhoneAboutContext.Provider>
         </main>
