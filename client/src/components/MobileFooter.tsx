@@ -189,7 +189,32 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // Typing: the keyboard is up, and the bar would ride on it over the box
   // being typed in (stream chat, the reply box). Native apps step it aside too.
   const typing = useTyping();
-  const effectiveHidden = dmThreadOpen || hidden || typing;
+  // Two ways out of sight. STEPPED ASIDE (a chat thread is open, the keyboard
+  // is up): everything slides away. FOLDED (the collapsed layout, scrolling
+  // down a page): the pill folds into the Relay mark, which stays on screen in
+  // the corner the pill leaves, so something is always there to bring the menu
+  // back (owner, 2026-11-23). A tap on the folded mark re-forms the menu
+  // without scrolling; scrolling further down folds it again.
+  const steppedAside = dmThreadOpen || typing;
+  const iaCollapsed = useIaCollapsed();
+  const [heldOpen, setHeldOpen] = useState(false);
+  useEffect(() => { if (!hidden) setHeldOpen(false); }, [hidden]);
+  useEffect(() => {
+    if (!heldOpen) return;
+    let last: number | null = null;
+    let travelled = 0;
+    const onScroll = (e: Event) => {
+      const t = e.target as HTMLElement | Document;
+      const top = t instanceof Document ? (t.scrollingElement?.scrollTop ?? 0) : t.scrollTop;
+      if (last !== null && top > last) travelled += top - last;
+      last = top;
+      if (travelled > 24) setHeldOpen(false);
+    };
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, { capture: true });
+  }, [heldOpen]);
+  const folded = iaCollapsed && hidden && !heldOpen && !steppedAside;
+  const effectiveHidden = iaCollapsed ? steppedAside || folded : steppedAside || hidden;
 
   // What the footer covers right now, for bars that ride on it (the thread
   // page's docked reply bar): its height while shown, 0 once it slides away.
@@ -215,7 +240,6 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // (Discover moved to /discover, everyone lands on Chats), so `location !==
   // "/"` was true on every tab and switching ALWAYS replaced — Back exited the
   // app instead of returning to Chats.
-  const iaCollapsed = useIaCollapsed();
   const goTab = (tab: NavDestination) => (e: React.MouseEvent) => {
     e.preventDefault();
     const target = tab.path ?? "/";
@@ -286,7 +310,8 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
     }
     openCreateStudio();
   };
-  const hiddenCls = effectiveHidden ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100";
+  const slidAway = iaCollapsed ? steppedAside : effectiveHidden;
+  const hiddenCls = slidAway ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100";
   const motion = "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none";
 
   // The collapsed IA (design canvas "App-Home", 2026-11-16): four places in a
@@ -296,25 +321,32 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
       <>
         <button
           type="button"
-          aria-label={composeLabel}
-          onClick={compose}
-          className={`fixed right-5 z-50 md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] active:scale-[0.96] ${motion} ${hiddenCls} ${composeDisabled ? "opacity-40 pointer-events-none" : ""}`}
+          aria-label={folded ? "Show menu" : composeLabel}
+          onClick={folded ? () => setHeldOpen(true) : compose}
+          className={`mobile-nav-mark fixed right-5 z-[51] md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"}`}
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" }}
+          data-folded={folded || undefined}
           data-testid="mobile-nav-create"
         >
           {/* Otto is the compose button on every screen size (owner, 2026-11-16): the same
-              mark as the desktop button and the classic dock, alive (blinks, works, smiles on tap). */}
-          <OttoMark size={36} className="!size-9" role="post" />
+              mark as the desktop button and the classic dock, alive (blinks, works, smiles on tap).
+              Folded, it is the menu itself, rolled up. */}
+          <span className="mobile-nav-mark-roll flex"><OttoMark size={36} className="!size-9" role="post" /></span>
         </button>
         <nav
-          className={`fixed bottom-0 left-0 right-0 z-50 md:hidden px-3 ${motion} ${hiddenCls}`}
+          className={`fixed bottom-0 left-0 right-0 z-50 md:hidden px-3 ${motion} ${hiddenCls} ${folded ? "pointer-events-none" : ""}`}
           ref={navRef}
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+          data-folded={folded || undefined}
+          aria-hidden={folded || undefined}
           data-testid="mobile-footer-nav"
         >
           <div className="mobile-nav-pill grid grid-cols-4 items-center h-[68px] rounded-[34px]">
-            {tabs.map((t) => (
-              <FooterTab key={t.id} tab={t} active={isNavDestinationActive(t.id, location, search, iaCollapsed)} onNavigate={goTab} pill />
+            {tabs.map((t, i) => (
+              // --i: each place's turn as the pill folds into the mark and unrolls from it.
+              <div key={t.id} className="mobile-nav-fold-item" style={{ "--i": i } as React.CSSProperties}>
+                <FooterTab tab={t} active={isNavDestinationActive(t.id, location, search, iaCollapsed)} onNavigate={goTab} pill />
+              </div>
             ))}
           </div>
         </nav>

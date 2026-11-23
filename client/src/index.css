@@ -2301,6 +2301,46 @@ html[data-perf="lite"] .space-bg-nebula {
      frosted fill alone let list text read through the tab labels (iOS
      Simulator, 2026-11-17). Without the blur the pill is solid. */
   html[data-perf="lite"] .mobile-nav-pill { background: hsl(var(--card)); }
+
+  /* The pill folds into the Relay mark (owner, 2026-11-23). Scrolling down,
+     the four places are drawn toward the mark one after another, nearest
+     first, the pill closes behind them onto the mark's corner, and the mark
+     rolls down to rest where the pill was. Scrolling up, or a tap on the
+     mark, plays it back: the mark rolls up, the pill unrolls from it, the
+     places come out. One third of a second each way. */
+  .mobile-nav-pill {
+    transform-origin: calc(100% - 37px) 50%;
+    transition: transform 0.32s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.2s ease;
+  }
+  [data-folded="true"] > .mobile-nav-pill {
+    transform: scale(0.12, 0.7);
+    opacity: 0;
+    transition-delay: 0.1s;
+  }
+  .mobile-nav-fold-item {
+    min-width: 0;
+    transition: transform 0.26s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.18s ease;
+    transition-delay: calc((3 - var(--i, 0)) * 35ms);
+  }
+  [data-folded="true"] .mobile-nav-fold-item {
+    transform: translateX(calc((3 - var(--i, 0)) * 44px + 24px)) scale(0.5);
+    opacity: 0;
+  }
+  .mobile-nav-mark {
+    transition: transform 0.32s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.3s ease;
+  }
+  /* Folded, the mark rests where the pill was, or just above a docked reply
+     bar when a page has one (--ro-dock-h, the thread page). */
+  .mobile-nav-mark[data-folded="true"] { transform: translateY(calc(88px - var(--ro-dock-h, 0px))); }
+  .mobile-nav-mark:active { transform: scale(0.96); }
+  .mobile-nav-mark[data-folded="true"]:active { transform: translateY(calc(88px - var(--ro-dock-h, 0px))) scale(0.96); }
+  .mobile-nav-mark-roll { transition: transform 0.42s cubic-bezier(0.3, 0.7, 0.2, 1); }
+  .mobile-nav-mark[data-folded="true"] .mobile-nav-mark-roll { transform: rotate(360deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-nav-pill, .mobile-nav-fold-item, .mobile-nav-mark, .mobile-nav-mark-roll { transition: opacity 0.15s ease; transition-delay: 0s; }
+    [data-folded="true"] > .mobile-nav-pill, [data-folded="true"] .mobile-nav-fold-item { transform: none; }
+    .mobile-nav-mark[data-folded="true"] .mobile-nav-mark-roll { transform: none; }
+  }
   .mobile-nav-pill-item {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
     height: 56px; margin: 6px 4px; border-radius: 28px;
