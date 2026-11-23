@@ -329,6 +329,7 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
 // Same footprint as the corresponding EventCard variant so swapping skeleton →
 // card doesn't reflow the page.
 export function EventCardSkeleton({ variant = "list" }: { variant?: "list" | "embed" }) {
+  const isMobile = useIsMobile();
   if (variant === "embed") {
     return (
       <div className="mt-2 rounded-lg border border-border/30 bg-background/20 p-3" data-testid="event-embed-skeleton">
@@ -346,6 +347,20 @@ export function EventCardSkeleton({ variant = "list" }: { variant?: "list" | "em
               <div className="h-3 w-2/3 rounded bg-muted/30" />
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+  // Phones: the compact row's size and shape, so the list doesn't jump when
+  // the events arrive.
+  if (isMobile) {
+    return (
+      <div className="flex items-start gap-3 min-h-[56px] py-2.5 border-b border-border/30 animate-pulse" data-testid="event-card-skeleton">
+        <div className="w-12 h-12 rounded-lg bg-muted/40 shrink-0" />
+        <div className="flex-1 min-w-0 space-y-2 py-1">
+          <div className="h-4 w-2/3 rounded bg-muted/40" />
+          <div className="h-3 w-1/2 rounded bg-muted/30" />
+          <div className="h-3 w-1/4 rounded bg-muted/30" />
         </div>
       </div>
     );

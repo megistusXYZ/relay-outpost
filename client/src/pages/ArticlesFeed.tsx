@@ -896,6 +896,12 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                         ? "Nothing here yet. Follow a writer and their articles appear here."
                         : "No articles from people you follow yet."}
                 </p>
+                {/* Nobody followed yet: somewhere to go (owner, 2026-11-23). */}
+                {!scopedAuthor && !searchQuery && follows.length === 0 && (
+                  <Button variant="outline" className="mt-4 min-h-11" onClick={() => setLocation("/search?tab=people")} data-testid="button-articles-find-people">
+                    Find people to follow
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">{yours.map((article, i) => renderCard(article, i === 0))}</div>

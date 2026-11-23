@@ -32,7 +32,7 @@ export const TOURS: Record<TourId, Tour> = {
     path: "/messages",
     steps: [
       { testId: null, title: "Your chats", body: "A quick tour, {steps} short steps. Private messages and your communities' group chats live here, in one list. Everything is end-to-end encrypted: only the people in a chat can read it." },
-      { testId: "button-new-chat", title: "Start one", body: "**New** starts a private message or a group chat. Invites you receive appear at the top of this list." },
+      { testId: "button-new-chat", title: "Start one", body: "**New chat** starts a private message or a group chat: the pen in the top bar on a phone, the New button on a wide screen. Invites you receive appear at the top of this list." },
       { testId: null, title: "Honest about what it knows", body: "While the app asks your relays for new messages it says **Checking for messages…** and, if it can't reach them, it says so, instead of pretending the list is empty." },
     ],
   },
