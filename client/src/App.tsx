@@ -39,6 +39,7 @@ import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverla
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { MobileFooter } from "@/components/MobileFooter";
+import { useChromeHeldOpen } from "@/lib/chrome-held-open";
 import { startAppUpdatePolling, repairApp, noteNewerBuild } from "@/lib/app-update";
 import { MiniPlayer } from "@/components/MiniPlayer";
 import { SignerDisconnectedBanner } from "@/components/SignerDisconnectedBanner";
@@ -1054,10 +1055,13 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
   const identityPortalActive = headerLocation.startsWith("/profile/") || headerLocation === "/account";
   // Same rule — must stay above the early return.
   const iaCollapsed = useIaCollapsed();
+  const chromeHeldOpen = useChromeHeldOpen();
 
   if (sidebarExpanded && !stickyHasAudio) return null;
 
-  const effectiveScrollHidden = scrollHidden && !stickyHasAudio;
+  // Held open by a tap on the folded mark (lib/chrome-held-open): the top bar
+  // comes back with the menu, not only on a scroll up.
+  const effectiveScrollHidden = scrollHidden && !stickyHasAudio && !chromeHeldOpen;
 
   // Notifications moved out of the mobile bottom nav — they live here as a
   // header bell beside Search, on mobile and desktop. The bell speaks the
@@ -1113,16 +1117,18 @@ const HeaderBar = memo(function HeaderBar({ scrollHidden }: { scrollHidden: bool
 
   return (
     <header
-      className={`fixed top-0 right-0 z-50 flex items-center gap-1.5 px-3 h-[4.25rem] md:h-12 md:gap-3 md:px-3 border-b border-border/40 bg-background md:bg-sidebar/90 md:backdrop-blur-md transition-all ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none ${
+      className={`fixed top-0 right-0 z-50 flex items-center gap-1.5 px-3 h-[4.25rem] md:h-12 md:gap-3 md:px-3 border-b border-border/40 bg-background md:bg-sidebar/90 md:backdrop-blur-md transition-all ease-[cubic-bezier(0.3,0.7,0.2,1)] motion-reduce:transition-none ${
         railActive
           ? "left-0 md:left-[4.25rem]"
           : sidebarExpanded
             ? "md:left-[var(--sidebar-width)]"
             : "left-0 md:pl-[calc(var(--sidebar-width-icon)+0.75rem)]"
       } ${
+        // chrome-in-step: the same 320ms and curve as the menu folding into
+        // the mark (index.css), so both ends of the screen move as one.
         effectiveScrollHidden
-          ? "-translate-y-full opacity-0 pointer-events-none duration-300"
-          : "translate-y-0 opacity-100 duration-300"
+          ? "-translate-y-full opacity-0 pointer-events-none chrome-in-step"
+          : "translate-y-0 opacity-100 chrome-in-step"
       }`}
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       id="app-header"
