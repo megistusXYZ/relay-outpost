@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { use$ } from "applesauce-react/hooks";
 import { eventStore, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, DEFAULT_RELAYS, getRelaysForPurpose, hasFeedData, markFeedDataLoaded, throttledPoolSubscribe } from "@/lib/nostr";
 import { KIND_TEXT_NOTE } from "@/lib/nostr-helpers";
+import { NewPostsPill } from "@/components/NewPostsPill";
 import { KIND_PICTURE } from "@/lib/media-frame";
 import { primalStatsCache } from "@/lib/primal-cache";
 import { prefetchStatsImmediate } from "@/lib/primal-cache";
@@ -713,6 +714,22 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
       .slice(0, displayLimit);
   }, [allImageEntries, cutoffTimestamp, displayLimit]);
 
+  // New pictures are held back while you look, as on Home and Videos; the pill
+  // says they are there. This page held them back with no pill, so they only
+  // appeared after a reload.
+  const bufferedCount = useMemo(() => {
+    return allImageEntries.filter((e) => e.event.created_at > cutoffTimestamp).length;
+  }, [allImageEntries, cutoffTimestamp]);
+
+  // Pill tap: show what arrived and return to the top.
+  const revealBufferedAtTop = useCallback(() => {
+    setCutoffTimestamp(Math.floor(Date.now() / 1000));
+    setDisplayLimit((prev) => Math.max(prev, PAGE_SIZE));
+    const scroller = document.querySelector<HTMLElement>(".feed-scroll-container");
+    scroller?.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
@@ -787,6 +804,7 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
   if (isMobile) {
     return (
       <div className="pb-4" data-testid="page-images-feed-mobile">
+        <NewPostsPill count={bufferedCount} onClick={revealBufferedAtTop} />
         {/* One slim row: no duplicate "Images" heading when embedded (the feed
             macro chip / hub tab already labels the view) and the sort is a
             compact chip instead of a full-width bar. When the sort is owned by
@@ -832,6 +850,7 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
 
   return (
     <div className={embedded ? "" : "px-2 sm:px-4 py-4 sm:py-6"} data-testid="page-images-feed">
+      <NewPostsPill count={bufferedCount} onClick={revealBufferedAtTop} />
       <div className={embedded ? "" : "max-w-6xl mx-auto"}>
         {/* ONE control row: sort · view controls (no title, lib/page-titles.test.ts). */}
         <div className="flex min-h-9 items-center gap-2 mb-3 flex-wrap">
