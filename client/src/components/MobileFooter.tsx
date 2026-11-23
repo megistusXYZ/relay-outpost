@@ -1,6 +1,7 @@
 import { OttoMark } from "@/components/OttoMark";
 import { useState, useEffect, useRef, memo } from "react";
 import { useTyping } from "@/lib/typing-focus";
+import { useChromeHeldOpen, holdChromeOpen, releaseChrome } from "@/lib/chrome-held-open";
 import { tabTap } from "@/lib/footer-nav";
 import { scrollPageToTop, isPageAtTop } from "@/lib/scroll-root";
 import { emitTabRetap } from "@/lib/tab-retap";
@@ -197,8 +198,9 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // without scrolling; scrolling further down folds it again.
   const steppedAside = dmThreadOpen || typing;
   const iaCollapsed = useIaCollapsed();
-  const [heldOpen, setHeldOpen] = useState(false);
-  useEffect(() => { if (!hidden) setHeldOpen(false); }, [hidden]);
+  const heldOpen = useChromeHeldOpen();
+  useEffect(() => { if (!hidden) releaseChrome(); }, [hidden]);
+  useEffect(() => releaseChrome, []);
   useEffect(() => {
     if (!heldOpen) return;
     let last: number | null = null;
@@ -208,7 +210,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
       const top = t instanceof Document ? (t.scrollingElement?.scrollTop ?? 0) : t.scrollTop;
       if (last !== null && top > last) travelled += top - last;
       last = top;
-      if (travelled > 24) setHeldOpen(false);
+      if (travelled > 24) releaseChrome();
     };
     document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => document.removeEventListener("scroll", onScroll, { capture: true });
@@ -322,7 +324,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
         <button
           type="button"
           aria-label={folded ? "Show menu" : composeLabel}
-          onClick={folded ? () => setHeldOpen(true) : compose}
+          onClick={folded ? holdChromeOpen : compose}
           className={`mobile-nav-mark fixed right-5 z-[51] md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"}`}
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" }}
           data-folded={folded || undefined}

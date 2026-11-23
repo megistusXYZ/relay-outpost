@@ -2335,6 +2335,13 @@ html[data-perf="lite"] .space-bg-nebula {
   .mobile-nav-mark:active { transform: scale(0.96); }
   .mobile-nav-mark[data-folded="true"]:active { transform: translateY(calc(88px - var(--ro-dock-h, 0px))) scale(0.96); }
   .mobile-nav-mark-roll { transition: transform 0.42s cubic-bezier(0.3, 0.7, 0.2, 1); }
+  /* The top bar leaves and returns on the fold's own timing and curve, so the
+     two ends of the screen move as one. The id outranks the bar's utility
+     classes, which would otherwise set their own. */
+  #app-header.chrome-in-step {
+    transition-duration: 0.32s;
+    transition-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
   .mobile-nav-mark[data-folded="true"] .mobile-nav-mark-roll { transform: rotate(360deg); }
   @media (prefers-reduced-motion: reduce) {
     .mobile-nav-pill, .mobile-nav-fold-item, .mobile-nav-mark, .mobile-nav-mark-roll { transition: opacity 0.15s ease; transition-delay: 0s; }
