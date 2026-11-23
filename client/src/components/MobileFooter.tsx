@@ -325,7 +325,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
           type="button"
           aria-label={folded ? "Show menu" : composeLabel}
           onClick={folded ? holdChromeOpen : compose}
-          className={`mobile-nav-mark fixed right-5 z-[51] md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"}`}
+          className={`mobile-nav-mark fixed right-5 z-50 md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"}`}
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" }}
           data-folded={folded || undefined}
           data-testid="mobile-nav-create"
@@ -336,7 +336,10 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
           <span className="mobile-nav-mark-roll flex"><OttoMark size={36} className="!size-9" role="post" /></span>
         </button>
         <nav
-          className={`fixed bottom-0 left-0 right-0 z-50 md:hidden px-3 ${motion} ${hiddenCls} ${folded ? "pointer-events-none" : ""}`}
+          // One layer under the mark, so the mark passes in front of the pill as
+          // it folds. The mark itself stays on the sheets' layer, never above:
+          // raised one higher (2026-11-23) it sat on top of the feed filter.
+          className={`fixed bottom-0 left-0 right-0 z-[49] md:hidden px-3 ${motion} ${hiddenCls} ${folded ? "pointer-events-none" : ""}`}
           ref={navRef}
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           data-folded={folded || undefined}
