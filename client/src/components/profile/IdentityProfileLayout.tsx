@@ -28,6 +28,8 @@ import { Pencil } from "lucide-react";
 import { getPetname, usePetnamesVersion } from "@/lib/petnames";
 import { PetnameDialog } from "@/components/PetnameDialog";
 import { DetailLink, linkifyBio } from "@/components/profile/ProfileDetailLink";
+import { PhoneAboutContext, FullBioContext } from "@/components/profile/phone-about";
+import { condenseBio } from "@/lib/condense-bio";
 import { BtcZapIcon } from "@/components/icons/BtcZapIcon";
 import { CalendarDays } from "lucide-react";
 import { IdentityCounts } from "@/components/profile/IdentityPresence";
@@ -181,6 +183,73 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
     return () => io.disconnect();
   }, []);
 
+
+  // The sections under the head. Desktop draws them in the rail; a phone
+  // draws them under the stream's About chip, so the posts come first.
+  const [aboutRequest, setAboutRequest] = useState(0);
+  const hasSections = !!(circleSlot || communitiesSlot || badgesSlot || vouchSlot || data.about || data.website || data.lud16 || joined);
+  const sections = (
+    <>
+          {/* People you follow who follow THIS profile — real social proof (not
+              gameable shared-follows). Only shown when there's genuine overlap.
+              Labeled "Circle" for brevity; the data is the un-gameable kind. */}
+          {/* Circle + Communities share one slot on MOBILE (owner call,
+              2026-08-18): a chip toggle, Circle preset — two stacked people
+              sections cost a phone screen its calm. Desktop's rail has the
+              room, so both render there and nothing hides. Either alone
+              renders plain — a toggle with one option is a dead control. */}
+          <CirclesAndCommunities circleSlot={circleSlot} communitiesSlot={communitiesSlot} />
+
+          {/* Badges — only ones the person chose to show (their own profile
+              also lists ones waiting for them). This layout never drew them,
+              so on a phone a badge you showed appeared nowhere on your page. */}
+          {badgesSlot}
+
+          {/* Vouched by — signed endorsements (only shown when they exist). */}
+          {vouchSlot && (
+            <Section title="Vouched by">{vouchSlot}</Section>
+          )}
+
+          {/* Details */}
+          {(data.about || data.website || data.lud16 || joined) && (
+            <Section title="Details">
+              <div className="space-y-2.5">
+                {data.aboutNode ?? (data.about && <p className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed">{linkifyBio(data.about)}</p>)}
+                <dl className="space-y-1.5 text-[13px]">
+                  {data.website && <DetailLink url={data.website} />}
+                  {data.lud16 && (
+                    onZapLud16 ? (
+                      // Tapping the Lightning address opens the Zap module — the
+                      // address IS a "send sats here" affordance, so make it act like one.
+                      <button
+                        type="button"
+                        onClick={onZapLud16}
+                        className="group flex items-center gap-2 min-w-0 w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/[0.05] transition-colors"
+                        title={`Zap ${data.lud16}`}
+                        data-testid="identity-lud16-zap"
+                      >
+                        <BtcZapIcon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                        <span className="text-muted-foreground group-hover:text-foreground truncate transition-colors">{data.lud16}</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <BtcZapIcon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                        <span className="text-muted-foreground truncate">{data.lud16}</span>
+                      </div>
+                    )
+                  )}
+                  {joined && (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">Joined {joined}</span>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            </Section>
+          )}
+    </>
+  );
   return (
     // min-w-0 w-full: this container sits in a column-flex scroller, where a
     // block child grows to its content's MIN-CONTENT width instead of
@@ -274,7 +343,23 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
               other-user title names what the card DOES ("Connect with …")
               rather than naming the person. */}
           {isMobile && headActions ? (
-            <div className="-mt-1" data-testid="identity-actions-row">{headActions}</div>
+            <>
+              <div className="-mt-1" data-testid="identity-actions-row">{headActions}</div>
+              {/* Who this is, in two lines; the rest is one tap away in About. */}
+              {data.about && (
+                <div className="px-3">
+                  <p className="text-sm text-foreground/85 break-words leading-relaxed line-clamp-2" data-testid="profile-bio-brief">{linkifyBio(condenseBio(data.about))}</p>
+                  <button
+                    type="button"
+                    onClick={() => setAboutRequest((n) => n + 1)}
+                    className="-my-2 inline-flex min-h-11 items-center pr-3 text-[13px] font-medium text-brand hover:text-brand-strong"
+                    data-testid="button-bio-about"
+                  >
+                    more
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <Section title={data.isOwnProfile ? "Your account" : `Connect with ${data.displayName}`}>
               <div className="flex flex-col gap-2">
@@ -285,64 +370,9 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
             </Section>
           )}
 
-          {/* People you follow who follow THIS profile — real social proof (not
-              gameable shared-follows). Only shown when there's genuine overlap.
-              Labeled "Circle" for brevity; the data is the un-gameable kind. */}
-          {/* Circle + Communities share one slot on MOBILE (owner call,
-              2026-08-18): a chip toggle, Circle preset — two stacked people
-              sections cost a phone screen its calm. Desktop's rail has the
-              room, so both render there and nothing hides. Either alone
-              renders plain — a toggle with one option is a dead control. */}
-          <CirclesAndCommunities circleSlot={circleSlot} communitiesSlot={communitiesSlot} />
-
-          {/* Badges — only ones the person chose to show (their own profile
-              also lists ones waiting for them). This layout never drew them,
-              so on a phone a badge you showed appeared nowhere on your page. */}
-          {badgesSlot}
-
-          {/* Vouched by — signed endorsements (only shown when they exist). */}
-          {vouchSlot && (
-            <Section title="Vouched by">{vouchSlot}</Section>
-          )}
-
-          {/* Details */}
-          {(data.about || data.website || data.lud16 || joined) && (
-            <Section title="Details">
-              <div className="space-y-2.5">
-                {data.aboutNode ?? (data.about && <p className="text-sm text-foreground/85 whitespace-pre-wrap break-words leading-relaxed">{linkifyBio(data.about)}</p>)}
-                <dl className="space-y-1.5 text-[13px]">
-                  {data.website && <DetailLink url={data.website} />}
-                  {data.lud16 && (
-                    onZapLud16 ? (
-                      // Tapping the Lightning address opens the Zap module — the
-                      // address IS a "send sats here" affordance, so make it act like one.
-                      <button
-                        type="button"
-                        onClick={onZapLud16}
-                        className="group flex items-center gap-2 min-w-0 w-full text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/[0.05] transition-colors"
-                        title={`Zap ${data.lud16}`}
-                        data-testid="identity-lud16-zap"
-                      >
-                        <BtcZapIcon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                        <span className="text-muted-foreground group-hover:text-foreground truncate transition-colors">{data.lud16}</span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 min-w-0">
-                        <BtcZapIcon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                        <span className="text-muted-foreground truncate">{data.lud16}</span>
-                      </div>
-                    )
-                  )}
-                  {joined && (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground">Joined {joined}</span>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            </Section>
-          )}
+          {/* Circle, Communities, badges, Vouched by, Details. On a phone they
+              live under the stream's About chip instead (phone-about.tsx). */}
+          {!isMobile && sections}
 
           {/* Circle + Vouched-by land here in the next chunk (config lists them). */}
           {/* ── The pinned rail (desktop only) ──────────────────────
@@ -384,7 +414,9 @@ export function IdentityProfileLayout({ data, actions, headActions, onCoverState
         <main className="min-w-0">
           {/* Follower counts live under the name (IdentityCounts); the main
               column opens with the quiet totals line and the media shelf. */}
-          {children}
+          <PhoneAboutContext.Provider value={isMobile ? { sections: <FullBioContext.Provider value={true}><div className="space-y-4">{sections}</div></FullBioContext.Provider>, hasSections, openRequest: aboutRequest } : null}>
+            {children}
+          </PhoneAboutContext.Provider>
         </main>
       </div>
       {!data.isOwnProfile && (
