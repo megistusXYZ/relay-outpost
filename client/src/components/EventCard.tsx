@@ -4,7 +4,7 @@ import { eventStore, fetchProfilesCached } from "@/lib/nostr";
 import { KIND_METADATA, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Linkify } from "@/components/Linkify";
-import { CalendarDays, Clock, MapPin, Radio, Video, ExternalLink } from "lucide-react";
+import { CalendarDays, Check, Clock, MapPin, Radio, Video, ExternalLink } from "lucide-react";
 import {
   getCalendarEventDate,
   getCalendarEventEndDate,
@@ -13,6 +13,10 @@ import {
   type CalendarEventData,
 } from "@/lib/calendar-events";
 import { EventActionBar } from "@/components/EventActionBar";
+import { useNostrAuth } from "@/contexts/NostrAuthContext";
+import { useEventRsvps } from "@/hooks/use-event-rsvps";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { formatEventWhenShort } from "@/lib/event-when-short";
 import { EventDetails } from "@/components/EventDetails";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
@@ -21,7 +25,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 // nostr:naddr). Two variants:
 //   - "list": full-width row card with description, host, hashtags, meeting
 //     link, and an `actions` slot (pin/share/unpin/edit/delete supplied by the
-//     caller).
+//     caller). On a phone it is a compact row instead (owner, 2026-11-22):
+//     small picture, title, one line of time and place, your own answer; the
+//     rest is on the event, one tap away.
 //   - "embed": compact fixed-structure card for inside posts. Layout is
 //     reserved (fixed thumbnail box, single-line rows) so resolving the host
 //     profile or loading the image never shifts the feed.
@@ -162,8 +168,22 @@ export interface EventCardProps {
   className?: string;
 }
 
+/** Your own answer on a compact row, in words: "Going" or "Maybe". Nothing when you gave none. */
+function EventRowAnswer({ ce }: { ce: CalendarEventData }) {
+  const { pubkey } = useNostrAuth();
+  const { myStatus } = useEventRsvps(ce, pubkey);
+  if (myStatus === "accepted") {
+    return <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-brand" data-testid="event-row-answer"><Check className="w-3 h-3" aria-hidden="true" />Going</p>;
+  }
+  if (myStatus === "tentative") {
+    return <p className="mt-0.5 text-xs font-medium text-muted-foreground" data-testid="event-row-answer">Maybe</p>;
+  }
+  return null;
+}
+
 export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpen, onShare, className = "" }: EventCardProps) {
   const host = useEventHost(ce.pubkey);
+  const isMobile = useIsMobile();
   // Tapping a card opens the whole event (EventDetailDialog) unless the caller
   // routes it elsewhere with onOpen.
   const [detailOpen, setDetailOpen] = useState(false);
@@ -218,6 +238,36 @@ export function EventCard({ ce, variant = "list", dimmed = false, actions, onOpe
           </div>
           <EventActionBar ce={ce} variant="embed" onShare={onShare ? () => onShare(ce) : undefined} />
         </div>
+        {detailDialog}
+      </div>
+    );
+  }
+
+  // Phones: a compact row; everything else is on the event itself, one tap away.
+  if (isMobile) {
+    return (
+      <div
+        className={`group flex items-start gap-3 min-h-[56px] py-2.5 border-b border-border/30 cursor-pointer ${dimmed ? "opacity-50" : ""} ${className}`}
+        onClick={openDetails}
+        data-compact="true"
+        data-testid={`card-event-${ce.id.slice(0, 8)}`}
+      >
+        {ce.image && <EventThumb src={ce.image} sizeClass="w-12 h-12" />}
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openDetails(); }}
+            className="block w-full text-left text-sm font-medium text-foreground leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline"
+            data-testid={`event-card-open-${ce.id.slice(0, 8)}`}
+          >
+            {ce.title}
+          </button>
+          <p className="mt-0.5 text-xs text-muted-foreground truncate">
+            {formatEventWhenShort(ce)}{ce.location ? ` · ${ce.location}` : ""}
+          </p>
+          <EventRowAnswer ce={ce} />
+        </div>
+        {actions && <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>{actions}</div>}
         {detailDialog}
       </div>
     );
