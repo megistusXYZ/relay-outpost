@@ -713,30 +713,6 @@ export default function ImagesFeed({ embedded = false, sort }: { embedded?: bool
       .slice(0, displayLimit);
   }, [allImageEntries, cutoffTimestamp, displayLimit]);
 
-  const bufferedCount = useMemo(() => {
-    return allImageEntries.filter((e) => e.event.created_at > cutoffTimestamp).length;
-  }, [allImageEntries, cutoffTimestamp]);
-
-  const showBuffered = useCallback(() => {
-    setCutoffTimestamp(Math.floor(Date.now() / 1000));
-    setDisplayLimit((prev) => Math.max(prev, PAGE_SIZE));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("new-posts-update", {
-      detail: { count: bufferedCount, showBuffered }
-    }));
-  }, [bufferedCount, showBuffered]);
-
-  useEffect(() => {
-    return () => {
-      window.dispatchEvent(new CustomEvent("new-posts-update", {
-        detail: { count: 0, showBuffered: null }
-      }));
-    };
-  }, []);
-
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
