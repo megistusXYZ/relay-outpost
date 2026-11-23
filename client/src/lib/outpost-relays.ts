@@ -279,6 +279,21 @@ export function leaveOutpost(relayUrl: string): void {
   window.dispatchEvent(new CustomEvent("outpost-relays-changed"));
 }
 
+/**
+ * Leave a community everywhere, not only on this device: drop it from the
+ * joined list here, then from the published relay list and the published
+ * community list. The hub card's Leave used to do only the first, so the
+ * relay stayed in the person's published lists and another device could
+ * bring the community back. Both publish steps refuse rather than replace a
+ * list they could not read (see updateNip65RelayList).
+ */
+export async function leaveCommunityEverywhere(relayUrl: string): Promise<void> {
+  leaveOutpost(relayUrl);
+  await updateNip65RelayList("remove", relayUrl);
+  // You left — an empty list is the honest result, not an accident.
+  await publishCommunitySubscriptions({ allowEmpty: true });
+}
+
 export function getCustomRelays(): string[] {
   try {
     const stored = localStorage.getItem(CUSTOM_RELAYS_KEY);
