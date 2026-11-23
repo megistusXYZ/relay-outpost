@@ -88,18 +88,13 @@ import { usePeopleTypeahead } from "@/hooks/use-people-typeahead";
 import { PeopleToFollowStrip } from "@/components/PeopleToFollowStrip";
 import { useDiscoverTrust } from "@/hooks/use-discover-trust";
 import { onTabRetap } from "@/lib/tab-retap";
-import { DISCOVER_MIN_SCORE, discoverLensKey } from "@/lib/discover-trust";
+import { discoverLensKey } from "@/lib/discover-trust";
 import { getDisplayName, getAvatarUrl, getProfileContent } from "@/lib/nostr-helpers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import type { ArticleData } from "@/lib/nip23";
-import { floorArticles } from "@/lib/article-floor";
-import { useStrictnessPreset } from "@/lib/trust-preset";
+import { pickByBand } from "@/lib/article-band";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
 import { useProfileFloor } from "@/hooks/use-profile-floor";
-import { getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, requestFollowerCounts } from "@/lib/primal-cache";
-import { getFirstSeen } from "@/lib/account-age";
-import { computeEngagementScore } from "@/lib/engagement";
-import { effectivePow } from "@/lib/nip13-pow";
 import { useWiderNetwork } from "@/lib/network-mode";
 import { discoverSurfaces } from "@/lib/discover-surfaces";
 import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
@@ -783,82 +778,56 @@ function CommunitiesTile({ widerNetworkOn = true }: { widerNetworkOn?: boolean }
 function ArticlesTile() {
   const [, setLocation] = useLocation();
   const { follows, pubkey } = useNostrAuth();
+  const { fofSet } = useFollowsOfFollows(follows);
   const [article, setArticle] = useState<Reached<ArticleData[]> | null>(null);
   const seq = useRef(0);
   const load = useCallback(() => {
     const id = ++seq.current;
     setArticle(null);
-    followAnswer(fetchNewestArticle(follows ?? []), (r) => { if (seq.current === id) setArticle(r); })
+    followAnswer(fetchNewestArticle(follows ?? [], fofSet), (r) => { if (seq.current === id) setArticle(r); })
       .catch(() => { if (seq.current === id) setArticle({ data: [], reached: false }); });
+    // Asked again when the follows-of-follows arrive: the pool admits them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [follows]);
+  }, [follows, fofSet.size]);
   useEffect(() => { load(); return () => { seq.current++; }; }, [load]);
 
   const state = resolveTile(article);
 
-  // ── The Articles floor (lib/article-floor.ts), as on the Articles page ────
-  // The card used to show the newest two that passed a title-and-length check,
-  // so the flooders and nameless accounts the Articles page hides led the
-  // front door. People you follow always; anyone else needs a name and a
-  // picture, a person's pace, and one earned signal at your preset.
+  // ── The Articles rule (lib/article-band.ts), as on the Articles page ──────
+  // People you follow first, then writers your network vouches for: followed
+  // by people you follow, or carrying a positive trust score of your own.
+  // A writer nobody in your network vouches for is not shown, and neither is
+  // one whose score is simply unknown (owner, 2026-11-23: one rule for
+  // outsiders everywhere). The card used to run the old stranger floor and
+  // treat an unknown score as trusted.
   const candidates = useMemo(() => (state.status === "ready" && state.data ? state.data : []), [state.status, state.data]);
   const candidateEvents = useMemo(() => candidates.map((a) => a.event), [candidates]);
-  const { scores: wotScores, flaggedPubkeys, requestScoresBulk } = useGrapeRankScores();
-  const { preset } = useStrictnessPreset();
+  const { scores: wotScores, flaggedPubkeys, requestScoresBulk, loading: scoresLoading } = useGrapeRankScores();
   const { filter: moderationFilter } = useSpamFilter();
-  // Also fetches the authors' profiles, and re-renders when names land.
-  const { profileGetter, profileSettledGetter, profileVersion } = useProfileFloor(candidateEvents);
-  const [followerVersion, setFollowerVersion] = useState(0);
-  useEffect(() => onFollowerCountUpdate(() => setFollowerVersion((v) => v + 1)), []);
-  // Engagement comes from Primal. null = still asking: wait, rather than show a
-  // step-down pick and then swap it. false = Primal didn't answer: step down.
-  const [signals, setSignals] = useState<boolean | null>(null);
+  // Fetches the writers' profiles and re-renders when their names land.
+  useProfileFloor(candidateEvents);
+  const widerNetworkOn = useWiderNetwork(pubkey);
   useEffect(() => {
     if (candidateEvents.length === 0) return;
-    const authors = Array.from(new Set(candidateEvents.map((e) => e.pubkey)));
-    requestScoresBulk(authors);
-    requestFollowerCounts(authors);
-    const ids = candidateEvents.map((e) => e.id);
-    let live = true;
-    setSignals(null);
-    prefetchStatsImmediate(ids)
-      .catch(() => { /* judged below from what arrived */ })
-      .finally(() => { if (live) setSignals(ids.some((id) => primalStatsCache.has(id))); });
-    return () => { live = false; };
+    requestScoresBulk(Array.from(new Set(candidateEvents.map((e) => e.pubkey))));
   }, [candidateEvents, requestScoresBulk]);
   const followSet = useMemo(() => new Set(follows ?? []), [follows]);
-  const floored = useMemo(() => {
-    // No wait for Primal's engagement numbers or for profiles: every candidate
-    // already passed Discover's trust gate (0.50+ or followed; discover-data.ts),
-    // and a trusted author is shown on trust alone (article-floor.ts). That wait
-    // took 20-56s on production. The flood and flagged checks still apply.
-    if (candidateEvents.length === 0) return null;
+  const articles = useMemo(() => {
+    if (candidateEvents.length === 0) return [] as ArticleData[];
     const byEvent = new Map(candidates.map((a) => [a.event, a] as const));
-    const { shown, holding } = floorArticles<ArticleData["event"]>(
-      moderationFilter(candidateEvents),
-      {
-        isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
-        wotScore: (pk) => wotScores?.get(pk) ?? DISCOVER_MIN_SCORE,
-        flagged: (pk) => !!flaggedPubkeys?.has(pk),
-        profile: profileGetter,
-        profileSettled: profileSettledGetter,
-        engagementScore: (e) => computeEngagementScore(primalStatsCache.get(e.id) ?? null),
-        firstSeen: getFirstSeen,
-        followerCount: getCachedFollowerCount,
-        powDifficulty: effectivePow,
-        signalsAvailable: signals ?? false,
-      },
-      preset,
-      Math.floor(Date.now() / 1000),
-    );
-    return { shown: shown.slice(0, 2).map((e) => byEvent.get(e)!), holding };
-    // profileVersion / followerVersion re-run the floor when a profile or a
-    // follower count arrives after the articles did.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candidates, candidateEvents, signals, moderationFilter, followSet, pubkey, wotScores, flaggedPubkeys, profileVersion, followerVersion, preset]);
-  // Still deciding: the answer is in but the floor can't pick yet.
-  const deciding = candidates.length > 0 && (floored === null || (floored.shown.length === 0 && floored.holding > 0));
-  const articles = floored?.shown ?? [];
+    const picked = pickByBand(moderationFilter(candidateEvents), (e) => e.pubkey, {
+      me: pubkey,
+      isFollowed: (pk) => followSet.has(pk),
+      followedByFollows: (pk) => fofSet.has(pk),
+      trustScore: (pk) => wotScores?.get(pk),
+      flagged: (pk) => !!flaggedPubkeys?.has(pk),
+      widerNetworkOn,
+    }, 2);
+    return picked.map((e) => byEvent.get(e)!);
+  }, [candidates, candidateEvents, moderationFilter, pubkey, followSet, fofSet, wotScores, flaggedPubkeys, widerNetworkOn]);
+  // Still deciding: candidates are in, none is picked yet, and the trust
+  // scores that could admit one are still on their way.
+  const deciding = candidates.length > 0 && articles.length === 0 && scoresLoading;
   const freshItems = useMemo<FreshItem[] | null>(
     () => (articles.length > 0 ? articles.map((a) => ({ id: a.event.id, timeMs: a.publishedAt * 1000 })) : null),
     [articles],
@@ -896,7 +865,7 @@ function ArticlesTile() {
         </span>
       )}
       {(state.status === "empty" || (state.status === "ready" && !deciding && articles.length === 0)) && (
-        <span className="block text-[13px] text-muted-foreground">Nothing new — tap to browse.</span>
+        <span className="block text-[13px] text-muted-foreground" data-testid="articles-tile-empty">Nothing from your circle yet. Tap to browse.</span>
       )}
       {state.status === "unreachable" && unreachableBody("the article relays")}
     </TileShell>

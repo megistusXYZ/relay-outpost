@@ -25,3 +25,23 @@ export function articleBand(author: string, s: BandSignals): ArticleBand {
   if (s.followedByFollows(author)) return "circle";
   return (s.trustScore(author) ?? 0) > 0 ? "circle" : null;
 }
+
+/**
+ * The few articles a small card shows, by the same rule: your own people
+ * first, then your wider circle, each in the order given; one per writer;
+ * nobody else. Used by Discover's Articles card.
+ */
+export function pickByBand<T>(items: readonly T[], authorOf: (item: T) => string, s: BandSignals, limit: number): T[] {
+  const yours: T[] = [];
+  const circle: T[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const author = authorOf(item);
+    if (seen.has(author)) continue;
+    const band = articleBand(author, s);
+    if (band === null) continue;
+    seen.add(author);
+    (band === "yours" ? yours : circle).push(item);
+  }
+  return [...yours, ...circle].slice(0, limit);
+}
