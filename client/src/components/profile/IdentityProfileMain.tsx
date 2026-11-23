@@ -171,14 +171,6 @@ export function IdentityProfileMain({
   // No All chip on a phone: six chips ran off a 390px screen and hid About,
   // and Posts is what the page opens on there (owner, 2026-11-22).
   const filter: StreamFilter = about ? (chosen === "all" ? "posts" : chosen) : (chosen === "about" ? "all" : chosen);
-  const chipsRef = useRef<HTMLDivElement | null>(null);
-  // The head's "more" opens About, and brings the chips into view.
-  const openRequest = about?.openRequest ?? 0;
-  useEffect(() => {
-    if (!openRequest) return;
-    setFilter("about");
-    chipsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [openRequest]);
   // Montage = a VISUAL glance: photos + video posters, in post order. Tapping a
   // photo opens the gallery lightbox at that photo; tapping a video opens the
   // channel-surf theater at that video. (Audio/articles aren't visual-glance
@@ -358,7 +350,7 @@ export function IdentityProfileMain({
           offers 316, so wrapping put "Media" alone on a second row looking like
           a mistake. Tighter chip padding fits all five on a normal phone; a
           narrower one swipes instead of stacking. */}
-      <div ref={chipsRef} className="flex items-center gap-1.5 mb-3 px-3 scroll-mt-20 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1.5 mb-3 px-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filters.map((f) => {
           // Confirmed-empty chips DIM (lib/profile-chips.ts: unknown never
           // dims, data un-dims) but stay tappable — the tap lands on an honest
@@ -400,8 +392,10 @@ export function IdentityProfileMain({
         <ProfileShopGrid listings={listings} />
       ) : filter === "about" ? (
         <div className="flex flex-col gap-4" data-testid="identity-about-tab">
-          {about?.sections}
+          {/* How much they post and what about comes first: it is what About
+              is asked most (owner, 2026-11-23). */}
           {presence}
+          {about?.sections}
         </div>
       ) : (
       <div ref={streamRef} className="flex flex-col gap-3">
