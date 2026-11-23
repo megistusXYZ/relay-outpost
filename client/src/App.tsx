@@ -35,7 +35,6 @@ import { OttoMark } from "@/components/OttoMark";
 import { useClassicSidebar } from "@/lib/desktop-chrome";
 import { openOrbitMenu, SHELL_OVERLAY_EVENTS, FEEDBACK_EVENTS } from "@/lib/shell-events";
 import { DeferredShell } from "@/components/DeferredShell";
-import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import { ScrollRestoreDebugOverlay } from "@/components/ScrollRestoreDebugOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -1240,7 +1239,6 @@ function AppContent({ mainRef, scrollHidden, covered }: { mainRef: React.RefObje
           </PullToRefresh>
         </main>
       </div>
-      <ScrollToTopButton containerRef={mainRef} />
       <ScrollRestoreDebugOverlay />
       <ZapNotificationWatcher />
       <DeferredShell events={SHELL_OVERLAY_EVENTS}>
