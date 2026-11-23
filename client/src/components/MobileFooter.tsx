@@ -343,10 +343,13 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
           aria-hidden={folded || undefined}
           data-testid="mobile-footer-nav"
         >
-          <div className="mobile-nav-pill grid grid-cols-4 items-center h-[68px] rounded-[34px]">
+          {/* However many places there are, they share the pill evenly: a
+              visitor's single place sits in the middle, not in the first of
+              four columns (owner, 2026-11-23). */}
+          <div className="mobile-nav-pill grid items-center h-[68px] rounded-[34px]" style={{ gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}>
             {tabs.map((t, i) => (
-              // --i: each place's turn as the pill folds into the mark and unrolls from it.
-              <div key={t.id} className="mobile-nav-fold-item" style={{ "--i": i } as React.CSSProperties}>
+              // --i: each place's turn, counted from the mark's side, as the pill folds into the mark and unrolls from it.
+              <div key={t.id} className="mobile-nav-fold-item" style={{ "--i": 3 - (tabs.length - 1 - i) } as React.CSSProperties}>
                 <FooterTab tab={t} active={isNavDestinationActive(t.id, location, search, iaCollapsed)} onNavigate={goTab} pill />
               </div>
             ))}
