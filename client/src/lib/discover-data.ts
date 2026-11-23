@@ -305,11 +305,20 @@ export function survivingArticles(events: Event[]): ArticleData[] {
     .sort((a, b) => b.publishedAt - a.publishedAt);
 }
 
-export function fetchNewestArticle(follows: readonly string[] = []): Promise<Reached<ArticleData[]>> {
-  return remembered(`article:${follows.length > 0 ? "F" : "g"}:${lensKey()}`, () => fetchNewestArticleFresh(follows));
+export function fetchNewestArticle(follows: readonly string[] = [], vouched: ReadonlySet<string> = NOBODY): Promise<Reached<ArticleData[]>> {
+  return remembered(`article:${follows.length > 0 ? "F" : "g"}:${vouched.size}:${lensKey()}`, () => fetchNewestArticleFresh(follows, vouched));
 }
 
-async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reached<ArticleData[]>> {
+const NOBODY: ReadonlySet<string> = new Set();
+/** How many vouched writers are asked about by name: relays refuse very long author lists. */
+const VOUCHED_ASKED = 200;
+
+/**
+ * `vouched`: writers followed by people the reader follows. The Articles rule
+ * (lib/article-band.ts) admits them, so the card's pool has to as well; the
+ * card then applies that rule to pick what it shows.
+ */
+async function fetchNewestArticleFresh(follows: readonly string[], vouched: ReadonlySet<string> = NOBODY): Promise<Reached<ArticleData[]>> {
   const followSet = new Set(follows);
   // Reach measured against the same pool sockets the subscribe uses — not a
   // fourth hand-rolled primitive. Raced in parallel; it costs nothing when the
@@ -328,13 +337,18 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   const trustedArticlesP = Promise.all([topP, started.fromServer]).then(([t, fromServer]) => (!fromServer && t.reached && t.top.length > 0
     ? collectOnce(feedBaseRelays(), { kinds: [KIND_LONG_FORM], authors: t.top.slice(0, 200), limit: 30 }, 8_000)
     : ([] as Event[])));
-  const [served, sample, followsArticles, trustedArticles] = await Promise.all([
+  const [served, sample, followsArticles, trustedArticles, vouchedArticles] = await Promise.all([
     servedGiven(started, feedBaseRelays()),
     started.sample,
     follows.length > 0
       ? collectOnce(feedBaseRelays(), { kinds: [KIND_LONG_FORM], authors: follows.slice(0, 100), limit: 15 }, 8_000)
       : Promise.resolve([] as Event[]),
     trustedArticlesP,
+    // Writers your follows follow: asked for by name, because the general
+    // sample is the newest of everyone and rarely holds theirs.
+    vouched.size > 0
+      ? collectOnce(feedBaseRelays(), { kinds: [KIND_LONG_FORM], authors: Array.from(vouched).slice(0, VOUCHED_ASKED), limit: 20 }, 8_000)
+      : Promise.resolve([] as Event[]),
   ]);
   // Every candidate, your writers first. The tile floors them and shows the
   // top TWO that pass (one headline over a tall empty card undersold it).
@@ -344,9 +358,11 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   const events = sample.events;
   const trust = await loadDiscoverTrust([...events, ...followsArticles].map((e) => e.pubkey), { ...trustOpts, vetted: vettedAuthors(sample) });
   if (!trust.reached) return { data: [], reached: false };
-  const gate = { follows: followSet, scores: trust.scores };
+  const scores = new Map(trust.scores);
+  for (const pk of vouched) if (!scores.has(pk)) scores.set(pk, DISCOVER_MIN_SCORE);
+  const gate = { follows: followSet, scores };
   const candidates = preferFollowed(
-    survivingArticles(gateByTrust([...followsArticles, ...events, ...trustedArticles], (e) => e.pubkey, gate)),
+    survivingArticles(gateByTrust([...followsArticles, ...vouchedArticles, ...events, ...trustedArticles], (e) => e.pubkey, gate)),
     (a) => followSet.has(a),
     (a) => a.event.pubkey,
   );
@@ -355,7 +371,7 @@ async function fetchNewestArticleFresh(follows: readonly string[]): Promise<Reac
   // Events in hand are themselves proof someone answered, even if the reach
   // probe lost its race with a relay that dropped right after serving us.
   // So is a sample from our server: it only answers after the relays did.
-  return { data: candidates, reached: served || sample.vetted || events.length > 0 || followsArticles.length > 0 || trustedArticles.length > 0 };
+  return { data: candidates, reached: served || sample.vetted || events.length > 0 || followsArticles.length > 0 || trustedArticles.length > 0 || vouchedArticles.length > 0 };
 }
 
 // ── Feed teaser ──────────────────────────────────────────────────────────────
