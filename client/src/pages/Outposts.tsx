@@ -5569,61 +5569,56 @@ export default function Outposts() {
         </p>
       )}
 
-      {/* Curated starters — good rooms a new person can join without knowing
-          what to search for. Each entry is wire-verified before it's listed
-          (lib/starter-communities). Self-hides once everything is joined. */}
-      {/* The public starters are the wider network; while it is off the door
+      {/* The hub advertises no community of its own (owner, 2026-11-22): no
+          heading, no built-in rooms, only the "run a community" line. A
+          community we agree to feature is an entry in the curated list
+          (lib/starter-communities, empty as shipped); it shows as a row above
+          that line and hides once joined. */}
+      {/* A featured community is the wider network; while that is off the door
           stands here instead (components/wider-network, owner 2026-10-10). */}
       {pubkey && !hubWiderNetworkOn && (
-        <div className="mt-5" data-testid="starter-communities-door">
+        <div className="mt-5" data-testid="featured-communities-door">
           <WiderNetworkDoor compact testId="wider-network-door-communities" />
         </div>
       )}
-      {pubkey && hubWiderNetworkOn && starterCards.length > 0 && (
-        <div className="mt-5" data-testid="starter-communities">
-          <p className="px-3 mb-2 text-[15px] text-foreground font-semibold">
-            Good places to start
-          </p>
-          {/* Flat rows, one list look across the app (the Chats list draws its
-              rows the same way): icon, name, one caption, a chevron. The old
-              tiles mixed a translucent card, a muted caption and an arrow —
-              three weights on one tile (owner, 2026-10-02). */}
-          <div className="divide-y divide-border/30 rounded-xl overflow-hidden">
-            {starterCards.map((c) => (
-              <button
-                key={c.url}
-                type="button"
-                onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
-                className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06]"
-                data-testid={`starter-community-${c.url.replace(/\W+/g, "-")}`}
-              >
-                <StarterCommunityIcon url={c.url} name={c.name} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium truncate">{c.name}</span>
-                  {/* Two lines, not a one-line ellipsis: on a phone a one-line
-                      cut took every tagline mid-sentence (owner QA). */}
-                  <span className="text-[13px] leading-snug text-muted-foreground line-clamp-2">{c.tagline}</span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
-              </button>
-            ))}
-            {/* Community operators are the growth loop — invite them in. Opens
-                the feedback composer (idea type) rather than a mailto: replies
-                land in the operator inbox with the reporter's npub attached. */}
+      {pubkey && (
+        /* Flat rows, one list look across the app (the Chats list draws its
+           rows the same way): icon, name, one caption, a chevron. */
+        <div className={`${hubWiderNetworkOn ? "mt-5" : "mt-2"} divide-y divide-border/30 rounded-xl overflow-hidden`} data-testid="featured-communities">
+          {hubWiderNetworkOn && starterCards.map((c) => (
             <button
+              key={c.url}
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
+              onClick={() => setLocation(`/outposts/${encodeURIComponent(c.url)}`)}
               className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06]"
-              data-testid="button-feature-your-community"
+              data-testid={`featured-community-${c.url.replace(/\W+/g, "-")}`}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full dark:bg-foreground/[0.05] text-foreground/75"><MagicStarIcon className="h-5 w-5" /></span>
+              <StarterCommunityIcon url={c.url} name={c.name} />
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium">Run a community? Get it featured here.</span>
-                <span className="block text-[13px] text-muted-foreground">Tell us about your relay and we'll take a look.</span>
+                <span className="block text-[15px] font-medium truncate">{c.name}</span>
+                {/* Two lines, not a one-line ellipsis: on a phone a one-line
+                    cut took every tagline mid-sentence (owner QA). */}
+                <span className="text-[13px] leading-snug text-muted-foreground line-clamp-2">{c.tagline}</span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
             </button>
-          </div>
+          ))}
+          {/* Community operators are the growth loop — invite them in. Opens
+              the feedback composer (idea type) rather than a mailto: replies
+              land in the operator inbox with the reporter's npub attached. */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("relay-outpost:open-feedback", { detail: { initialType: "idea" } }))}
+            className="group/starter flex w-full items-center gap-3 px-3 min-h-[56px] py-2.5 text-left transition-colors hover:bg-foreground/[0.04] active:bg-foreground/[0.06]"
+            data-testid="button-feature-your-community"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full dark:bg-foreground/[0.05] text-foreground/75"><MagicStarIcon className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium">Run a community? Get it featured here.</span>
+              <span className="block text-[13px] text-muted-foreground">Tell us about your relay and we'll take a look.</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors group-hover/starter:text-foreground" aria-hidden="true" />
+          </button>
         </div>
       )}
 

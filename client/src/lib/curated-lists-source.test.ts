@@ -23,7 +23,8 @@ describe("pickCurated", () => {
     const got = pickCurated({ starterCommunities: [room] });
     expect(got.starterCommunities).toEqual([room]);
     expect(got.suggestedFeeds).toEqual(CURATED_LISTS.suggestedFeeds);
-    expect(pickCurated({ starterCommunities: [], suggestedFeeds: [feed] }).starterCommunities).toEqual(CURATED_LISTS.starterCommunities);
+    const builtIn = { ...CURATED_LISTS, starterCommunities: [{ url: "wss://built-in.example", name: "Built in", tagline: "From the app" }] };
+    expect(pickCurated({ starterCommunities: [], suggestedFeeds: [feed] }, builtIn).starterCommunities).toEqual(builtIn.starterCommunities);
   });
 });
 

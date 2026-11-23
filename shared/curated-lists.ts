@@ -6,9 +6,12 @@
  * (client/src/lib/curated-lists-source.ts). Whatever arrives over the wire
  * is checked entry by entry with the checks below.
  *
- * Starter communities: every entry verified on the wire (NIP-11 answered with
- * a name and operator) before it earned a place; never add one you haven't
- * probed. Order is deliberate (owner-curated, 2026-08-27), not alphabetical.
+ * Starter communities: the communities the hub features above its "Run a
+ * community? Get it featured here." line. Empty as shipped (owner,
+ * 2026-11-22): the hub advertises no community of its own, and never another
+ * app's home relay. A community we agree to feature goes here, verified on
+ * the wire first (NIP-11 answered with a name and operator); never add one
+ * you haven't probed. Order is the display order.
  */
 
 export interface StarterCommunity {
@@ -111,14 +114,7 @@ export function parseCuratedLists(body: unknown): Partial<CuratedLists> | null {
 }
 
 export const CURATED_LISTS: CuratedLists = {
-  starterCommunities: [
-  { url: "wss://relay.ditto.pub", name: "Ditto", tagline: "The Ditto community's home relay" },
-  { url: "wss://relay.primal.net", name: "Primal", tagline: "The busiest public square on the network" },
-  { url: "wss://pyramid.fiatjaf.com", name: "fiatjaf's Pyramid", tagline: "Invite-only room run by nostr's original builder" },
-  { url: "wss://spatia-arcana.com", name: "Spatia Arcana", tagline: "\"I contain multitudes\" — an eclectic gathering place" },
-  { url: "wss://nostr21.com", name: "nostr21", tagline: "West-coast original — a paid, spam-free room" },
-  { url: "wss://theforest.nostr1.com", name: "The Forest", tagline: "A calm, actively moderated community" },
-],
+  starterCommunities: [],
   suggestedPeople: [
   "npub1sg6plzptd64u62a878hep2kev88swjh3tw00gjsfl8f237lmu63q0uf63m", // jack
   "npub1cn4t4cd78nm900qc2hhqte5aa8c9njm6qkfzw95tszufwcwtcnsq7g3vle", // Jack Mallers
