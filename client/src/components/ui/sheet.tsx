@@ -77,10 +77,12 @@ interface SheetContentProps
    */
   overlayClassName?: string
   /**
-   * A bottom sheet that opens out of the Relay mark (owner, 2026-11-23): it
-   * grows from where the footer's mark sits, and the mark becomes its close
-   * control, top right. Only takes effect where that mark is on screen (a
-   * phone with the pill menu); elsewhere the sheet slides up with its usual X.
+   * A bottom sheet opens out of the Relay mark (owner, 2026-11-23): it grows
+   * from where the footer's mark sits, and the mark becomes its close control,
+   * top right. That is the default for every bottom sheet since the rollout
+   * ("All plain sheets now"); pass false to keep one sliding up with its X.
+   * It only takes effect where the mark is on screen (a phone with the pill
+   * menu, the mark not stepped aside); elsewhere the sheet slides up as before.
    */
   fromMark?: boolean
 }
@@ -110,7 +112,7 @@ const SheetContent = React.forwardRef<
   const isBottom = side === "bottom"
   // Read once, as the sheet mounts: where the footer's mark is. Null means it
   // is not on screen, and the sheet behaves as any other.
-  const [markRect] = React.useState(() => (fromMark && isBottom ? footerMarkRect() : null))
+  const [markRect] = React.useState(() => (fromMark !== false && isBottom ? footerMarkRect() : null))
   const opensFromMark = !!markRect
   // The element arrives a commit after this component mounts (the portal
   // renders its children on its second pass), so it is held in state: the
