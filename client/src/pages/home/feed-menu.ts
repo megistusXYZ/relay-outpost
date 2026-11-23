@@ -25,7 +25,7 @@ export type FeedStyle = "all" | "photos" | "video" | "polls";
 export const FEED_TABS: ReadonlyArray<{ key: FeedTabKey; label: string; hint: string; requiresAuth: boolean }> = [
   { key: "foryou", label: "For you", hint: "Popular posts from across the network", requiresAuth: false },
   { key: "following", label: "Following", hint: "Posts from the people you follow", requiresAuth: true },
-  { key: "trending", label: "Trending", hint: "What the whole network is reacting to", requiresAuth: false },
+  { key: "trending", label: "Trending", hint: "What your circle is reacting to", requiresAuth: true },
   { key: "feeds", label: "Feeds", hint: "Photos, videos, polls and your own feeds", requiresAuth: true },
 ];
 
@@ -122,64 +122,55 @@ export function filterGroups(env: {
 /* ----------------------------------------------------------------------------
  * Trending: "From"
  *
- * Trending has one ranking, a blended one that exists for the last hour or the
- * last four. It used to have four count charts beside it (likes, thanks,
- * replies, reposts, from today back to all time), under a "Top by" row; their
- * outside source closed on 2026-11-21 and they went with it.
+ * Trending is ranked by us from the reader's own circle (owner, 2026-11-23;
+ * lib/circle-trending.ts). A circle posts far less than the whole network,
+ * so its spans are a day and a week, not the hour and four hours the outside
+ * ranking had. Choices saved for that ranking, or for the count charts before
+ * it, open on today.
  * ------------------------------------------------------------------------- */
 
-export type TrendingFrom = "1h" | "4h";
+export type TrendingFrom = "24h" | "7d";
 
-const OVERALL_FROM: ReadonlyArray<{ value: TrendingFrom; label: string }> = [
-  { value: "1h", label: "Last hour" },
-  { value: "4h", label: "Last 4 hours" },
+const CIRCLE_FROM: ReadonlyArray<{ value: TrendingFrom; label: string }> = [
+  { value: "24h", label: "Today" },
+  { value: "7d", label: "This week" },
 ];
 
-/** Where Trending opens when nobody chose (owner, 2026-10-03): Overall, last hour. */
-export const DEFAULT_TRENDING_SELECTOR = "trending_1h";
+/** Where Trending opens when nobody chose: today. */
+export const DEFAULT_TRENDING_SELECTOR = "circle_24h";
 
-/** A stored selector that no longer has a home on Trending (its own Polls
- *  list, which lives under Feeds now; the four count charts, whose outside
- *  source closed on 2026-11-21) falls back to the default. */
+/** A stored selector that no longer has a home on Trending falls back to the default. */
 export function trendingSelectorOrDefault(selector: string): string {
-  if (selector === "trending_1h" || selector === "trending_4h") return selector;
+  if (selector === "circle_24h" || selector === "circle_7d") return selector;
   return DEFAULT_TRENDING_SELECTOR;
 }
 
-/**
- * Windows saved before Trending's menu changed, read as the closest that
- * exists now: 12 and 24 hours are nearest to 4 hours. Anything else that is
- * gone opens the default.
- */
-export function migrateTrendingChart(v: string | null | undefined): string | null {
-  if (!v) return null;
-  if (v === "trending_12h" || v === "trending_24h") return "trending_4h";
-  return v;
+/** How far back a span reaches, in seconds. */
+export function trendingSpanSeconds(selector: string): number {
+  return trendingSelectorOrDefault(selector) === "circle_7d" ? 7 * 86_400 : 86_400;
 }
 
-/** The window Trending opens on: this session's own pick, else the saved setting, else the last hour. */
+/** The span Trending opens on: this session's own pick, else the saved setting, else today. */
 export function startingTrendingSelector(session: string | null | undefined, saved: string | null | undefined): string {
-  const s = migrateTrendingChart(session);
-  if (s) return trendingSelectorOrDefault(s);
-  const p = migrateTrendingChart(saved);
-  if (p) return trendingSelectorOrDefault(p);
+  if (session) return trendingSelectorOrDefault(session);
+  if (saved) return trendingSelectorOrDefault(saved);
   return DEFAULT_TRENDING_SELECTOR;
 }
 
-/** What Settings offers for "Trending opens on": exactly Trending's windows. */
+/** What Settings offers for "Trending opens on": exactly Trending's spans. */
 export const TRENDING_CHART_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
-  { value: "trending_1h", label: "Last hour" },
-  { value: "trending_4h", label: "Last 4 hours" },
+  { value: "circle_24h", label: "Today" },
+  { value: "circle_7d", label: "This week" },
 ];
 
 export function trendingFilter(selector: string): {
   from: TrendingFrom;
   fromOptions: ReadonlyArray<{ value: TrendingFrom; label: string }>;
 } {
-  return { from: trendingSelectorOrDefault(selector) === "trending_4h" ? "4h" : "1h", fromOptions: OVERALL_FROM };
+  return { from: trendingSelectorOrDefault(selector) === "circle_7d" ? "7d" : "24h", fromOptions: CIRCLE_FROM };
 }
 
 /** What a pick in "From" sets. */
 export function pickFrom(from: TrendingFrom): { selector: string } {
-  return { selector: from === "4h" ? "trending_4h" : "trending_1h" };
+  return { selector: from === "7d" ? "circle_7d" : "circle_24h" };
 }

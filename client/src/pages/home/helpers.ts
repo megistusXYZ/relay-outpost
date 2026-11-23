@@ -67,8 +67,8 @@ export function initialFeedMode(saved: string | null | undefined): FeedMode {
 
 /** Trending's windows (pages/home/feed-menu.ts has the rules). */
 export const TRENDING_SELECTORS = [
-  { value: "trending_1h", label: "Last hour" },
-  { value: "trending_4h", label: "Last 4 hours" },
+  { value: "circle_24h", label: "Today" },
+  { value: "circle_7d", label: "This week" },
 ] as const;
 
 /**
@@ -143,12 +143,14 @@ export function decodePubkey(input: string): string | null {
 
 /**
  * A feed, or the door to the wider network (owner, 2026-10-10;
- * lib/network-mode.ts). With the wider network off, For you and Trending are
- * the door — one card that opens the switch, nothing read for them — while
- * Following and a person's own feeds are the account's space and stay feeds.
- * With the wider network on, every lane is a feed, exactly as before.
+ * lib/network-mode.ts). With the wider network off, For you is the door — one
+ * card that opens the switch, nothing read for it — while Following and a
+ * person's own feeds are the account's space and stay feeds. Trending is a
+ * feed too since 2026-11-23: it is ranked from the reader's own circle, and
+ * with the wider network off that circle is the people they follow.
+ * With the wider network on, every lane is a feed.
  */
 export function feedBodyFor(feedMode: FeedMode, widerNetworkOn: boolean): "feed" | "door" {
   if (widerNetworkOn) return "feed";
-  return feedMode === "raw_signal" || feedMode === "deep_scan" ? "door" : "feed";
+  return feedMode === "raw_signal" ? "door" : "feed";
 }

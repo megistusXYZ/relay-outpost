@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups,
   trendingFilter, pickFrom, trendingSelectorOrDefault,
-  DEFAULT_TRENDING_SELECTOR, startingTrendingSelector, TRENDING_CHART_CHOICES,
+  DEFAULT_TRENDING_SELECTOR, startingTrendingSelector, TRENDING_CHART_CHOICES, trendingSpanSeconds,
 } from "./feed-menu";
 
 const feeds = [
@@ -52,10 +52,12 @@ describe("tapping a tab", () => {
     expect(tabTap("feeds", on("custom_all"))).toEqual({ do: "open-feeds" });
   });
 
-  it("signed out: Following and Feeds ask you to sign in; For you and Trending just work", () => {
+  // Trending is your circle since 2026-11-23: with nobody followed there is no circle to rank,
+  // so like Following it asks a visitor to sign in.
+  it("signed out: Following, Trending and Feeds ask you to sign in; For you just works", () => {
     expect(tabTap("following", on("raw_signal", false))).toEqual({ do: "sign-in" });
     expect(tabTap("feeds", on("raw_signal", false))).toEqual({ do: "sign-in" });
-    expect(tabTap("trending", on("raw_signal", false))).toEqual({ do: "switch", to: "trending" });
+    expect(tabTap("trending", on("raw_signal", false))).toEqual({ do: "sign-in" });
     expect(tabTap("foryou", on("deep_scan", false))).toEqual({ do: "switch", to: "foryou" });
   });
 });
@@ -141,62 +143,61 @@ describe("the filter shows the current feed's options and nothing else", () => {
  * from an outside archive that stopped its service (owner, 2026-11-21). What
  * is left is the one ranking that still has a source, over its two windows.
  */
-describe("Trending: one ranking, over the last hour or the last four", () => {
-  it("the filter offers the two windows and nothing else", () => {
-    const f = trendingFilter("trending_1h");
-    expect(f.from).toBe("1h");
-    expect(f.fromOptions.map((o) => o.label)).toEqual(["Last hour", "Last 4 hours"]);
-    expect(trendingFilter("trending_4h").from).toBe("4h");
+describe("Trending in your circle: today, or this week (owner, 2026-11-23)", () => {
+  it("the filter offers the two spans and nothing else", () => {
+    const f = trendingFilter("circle_24h");
+    expect(f.from).toBe("24h");
+    expect(f.fromOptions.map((o) => o.label)).toEqual(["Today", "This week"]);
+    expect(trendingFilter("circle_7d").from).toBe("7d");
     expect(Object.keys(f).sort()).toEqual(["from", "fromOptions"]);
   });
 
-  it("picking a window sets it", () => {
-    expect(pickFrom("1h")).toEqual({ selector: "trending_1h" });
-    expect(pickFrom("4h")).toEqual({ selector: "trending_4h" });
+  it("picking a span sets it, and each span knows how far back it reaches", () => {
+    expect(pickFrom("24h")).toEqual({ selector: "circle_24h" });
+    expect(pickFrom("7d")).toEqual({ selector: "circle_7d" });
+    expect(trendingSpanSeconds("circle_24h")).toBe(86_400);
+    expect(trendingSpanSeconds("circle_7d")).toBe(7 * 86_400);
   });
 
-  it("every window offered is one Trending can show", () => {
-    for (const r of trendingFilter("trending_1h").fromOptions) {
+  it("every span offered is one Trending can show", () => {
+    for (const r of trendingFilter("circle_24h").fromOptions) {
       expect(trendingFilter(pickFrom(r.value).selector).from, r.label).toBe(r.value);
     }
   });
 
   it("a phone still set to a chart that is gone shows the default, not an empty page", () => {
-    for (const gone of ["arc_reactions", "arc_zaps", "arc_replies", "arc_reposts", "polls", "something-old"]) {
-      expect(trendingSelectorOrDefault(gone), gone).toBe("trending_1h");
-      expect(trendingFilter(gone).from, gone).toBe("1h");
+    for (const gone of ["trending_1h", "trending_4h", "arc_reactions", "arc_zaps", "polls", "something-old"]) {
+      expect(trendingSelectorOrDefault(gone), gone).toBe("circle_24h");
+      expect(trendingFilter(gone).from, gone).toBe("24h");
+      expect(trendingSpanSeconds(gone), gone).toBe(86_400);
     }
-    expect(trendingSelectorOrDefault("trending_4h")).toBe("trending_4h");
+    expect(trendingSelectorOrDefault("circle_7d")).toBe("circle_7d");
   });
 });
 
-describe("where Trending opens (owner, 2026-10-03: Overall, last hour)", () => {
-  it("opens on the last hour when nothing was chosen", () => {
-    expect(DEFAULT_TRENDING_SELECTOR).toBe("trending_1h");
-    expect(startingTrendingSelector(null, null)).toBe("trending_1h");
-    expect(trendingFilter(startingTrendingSelector(null, null)).from).toBe("1h");
+describe("where Trending opens: today, unless someone chose the week", () => {
+  it("opens on today when nothing was chosen", () => {
+    expect(DEFAULT_TRENDING_SELECTOR).toBe("circle_24h");
+    expect(startingTrendingSelector(null, null)).toBe("circle_24h");
+    expect(trendingFilter(startingTrendingSelector(null, null)).from).toBe("24h");
   });
 
   it("keeps a choice someone made, the session's own pick first", () => {
-    expect(startingTrendingSelector(null, "trending_4h")).toBe("trending_4h");
-    expect(startingTrendingSelector("trending_1h", "trending_4h")).toBe("trending_1h");
+    expect(startingTrendingSelector(null, "circle_7d")).toBe("circle_7d");
+    expect(startingTrendingSelector("circle_24h", "circle_7d")).toBe("circle_24h");
   });
 
-  it("reads a longer window saved long ago as the longest that exists now", () => {
-    for (const v of ["trending_12h", "trending_24h"]) expect(startingTrendingSelector(null, v)).toBe("trending_4h");
-  });
-
-  it("a saved chart that no longer exists opens the default", () => {
-    for (const v of ["arc_reactions", "arc_zaps", "arc_replies", "arc_reposts", "rising", "hot", "weekly_top", "mostzapped_4h", "mostzapped_24h", "mostzapped_yesterday", "mostzapped_week"]) {
-      expect(startingTrendingSelector(null, v), v).toBe("trending_1h");
-      expect(startingTrendingSelector(v, "trending_4h"), v).toBe("trending_1h");
+  it("a saved chart from the outside ranking, or older, opens today", () => {
+    for (const v of ["trending_1h", "trending_4h", "trending_12h", "trending_24h", "arc_reactions", "rising", "hot", "weekly_top", "mostzapped_week"]) {
+      expect(startingTrendingSelector(null, v), v).toBe("circle_24h");
+      expect(startingTrendingSelector(v, "circle_7d"), v).toBe("circle_24h");
     }
   });
 
-  it("Settings offers exactly the windows Trending has, the last hour first", () => {
-    expect(TRENDING_CHART_CHOICES.map((c) => c.value)).toEqual(["trending_1h", "trending_4h"]);
+  it("Settings offers exactly the spans Trending has, today first", () => {
+    expect(TRENDING_CHART_CHOICES.map((c) => c.value)).toEqual(["circle_24h", "circle_7d"]);
     for (const c of TRENDING_CHART_CHOICES) expect(trendingSelectorOrDefault(c.value)).toBe(c.value);
-    expect(TRENDING_CHART_CHOICES.map((c) => c.label)).toEqual(["Last hour", "Last 4 hours"]);
+    expect(TRENDING_CHART_CHOICES.map((c) => c.label)).toEqual(["Today", "This week"]);
   });
 });
 
