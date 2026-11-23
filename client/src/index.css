@@ -2335,6 +2335,35 @@ html[data-perf="lite"] .space-bg-nebula {
   .mobile-nav-mark:active { transform: scale(0.96); }
   .mobile-nav-mark[data-folded="true"]:active { transform: translateY(calc(88px - var(--ro-dock-h, 0px))) scale(0.96); }
   .mobile-nav-mark-roll { transition: transform 0.42s cubic-bezier(0.3, 0.7, 0.2, 1); }
+  /* A sheet that opens out of the Relay mark (owner, 2026-11-23; ui/sheet.tsx
+     `fromMark`): it grows from where the footer's mark sits, measured as it
+     mounts (--mark-ox / --mark-oy), and folds back into that spot on close.
+     The mark arrives at the sheet's top right as its close control with the
+     same roll it makes when the menu folds. */
+  .sheet-from-mark[data-state="open"] { animation: sheetFromMarkIn 0.3s cubic-bezier(0.3, 0.7, 0.2, 1) both; }
+  .sheet-from-mark[data-state="closed"] { animation: sheetFromMarkOut 0.2s cubic-bezier(0.5, 0, 0.8, 0.4) both; }
+  @keyframes sheetFromMarkIn {
+    from { transform: scale(0.14); opacity: 0; }
+    35% { opacity: 1; }
+    to { transform: translateZ(0); opacity: 1; }
+  }
+  @keyframes sheetFromMarkOut {
+    from { transform: translateZ(0); opacity: 1; }
+    to { transform: scale(0.14); opacity: 0; }
+  }
+  .sheet-from-mark[data-state="open"] .sheet-mark-close { animation: sheetMarkArrive 0.42s cubic-bezier(0.3, 0.7, 0.2, 1) both; }
+  @keyframes sheetMarkArrive {
+    from { transform: rotate(-300deg) scale(0.7); }
+    to { transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-from-mark[data-state="open"], .sheet-from-mark[data-state="closed"] { animation-duration: 0.15s; animation-timing-function: ease; }
+    .sheet-from-mark[data-state="open"] { animation-name: sheetFadeIn; }
+    .sheet-from-mark[data-state="closed"] { animation-name: sheetFadeOut; }
+    .sheet-from-mark[data-state="open"] .sheet-mark-close { animation: none; }
+  }
+  @keyframes sheetFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sheetFadeOut { from { opacity: 1; } to { opacity: 0; } }
   /* The top bar leaves and returns on the fold's own timing and curve, so the
      two ends of the screen move as one. The id outranks the bar's utility
      classes, which would otherwise set their own. */
