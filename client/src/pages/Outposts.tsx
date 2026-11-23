@@ -11,7 +11,7 @@ import { pool, fetchProfilesCached, eventStore, publishEvent } from "@/lib/nostr
 import { FeaturedStrip } from "@/components/FeaturedStrip";
 import { getAuthStatus, onAuthChange, resetAuthState } from "@/lib/nip42-auth";
 import { useConcordEnabled } from "@/lib/concord/concord-prefs";
-import { getOutpostRelays, isJoinedOutpost, joinOutpost, leaveOutpost, updateNip65RelayList, publishCommunitySubscriptions, hydrateCommunitySubscriptions, classifyRelayUrl, reorderOutpostRelays, saveOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
+import { getOutpostRelays, isJoinedOutpost, joinOutpost, leaveCommunityEverywhere, updateNip65RelayList, publishCommunitySubscriptions, hydrateCommunitySubscriptions, classifyRelayUrl, reorderOutpostRelays, saveOutpostRelays, getActiveDefaultRelays, type OutpostRelay } from "@/lib/outpost-relays";
 import { isPinned as isFeedPinned, togglePin as toggleFeedPin, cleanupPinnedFeeds, getPinnedFeeds, groupPinsByRelay, pinUrl, normalizeUrl, slugToTabKey, tabKeyToSlug, type PinnableTab, type PinnedFeed } from "@/lib/pinned-feeds";
 import { TAB_ICON, pinDisplayLabel } from "@/lib/pin-meta";
 import { FOCUS_RING } from "@/lib/a11y";
@@ -466,7 +466,7 @@ function JoinedOutpostCard({
             <AlertDialogAction
               // Defer so the dialog finishes closing (Radix restores body
               // pointer-events) before this card unmounts from the list.
-              onClick={(e) => { e.stopPropagation(); setTimeout(() => { leaveOutpost(relay.url); toast({ title: `Left ${name}` }); }, 0); }}
+              onClick={(e) => { e.stopPropagation(); setTimeout(() => { void leaveCommunityEverywhere(relay.url); toast({ title: `Left ${name}` }); }, 0); }}
               className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
             >
               <LogOut className="w-3 h-3 mr-1" />
@@ -4157,13 +4157,11 @@ export function OutpostFeedBrowser({ relayUrl }: { relayUrl: string }) {
   };
 
   const handleConfirmLeave = async () => {
-    leaveOutpost(relayUrl);
+    const left = leaveCommunityEverywhere(relayUrl);
     setJoined(false);
     setShowLeaveConfirm(false);
     toast({ title: `Left ${name}` });
-    await updateNip65RelayList("remove", relayUrl);
-    // You left — an empty list is the honest result, not an accident.
-    await publishCommunitySubscriptions({ allowEmpty: true });
+    await left;
   };
 
   const handleCompose = useCallback((mode: "note" | "topic") => {
