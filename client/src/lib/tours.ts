@@ -91,8 +91,8 @@ export const TOURS: Record<TourId, Tour> = {
     path: "/search?tab=media&type=articles",
     steps: [
       { testId: null, title: "Articles", body: "A quick tour, {steps} short steps. Articles are full-length posts, published under the writer's name, that travel with them to any app." },
-      { testId: "wider-network-door-search", title: "The wider network is off", body: "Articles come from across the network. Turn the wider network on to read them; until then, this is your space." },
-      { testId: "articles-tab-switcher", title: "Trending, Latest, Following", body: "**Trending** is what's gaining readers, **Latest** is everything newest first, **Following** is people you follow." },
+      { testId: "articles-band-yours", title: "Your people first", body: "Articles from **people you follow** come first, newest at the top." },
+      { testId: "wider-network-door-articles", title: "Your wider circle", body: "With the wider network on, a second list adds writers followed by people you follow. Nobody else is shown. While it is off, this is your space." },
       { testId: "button-topics-dropdown", title: "Topics", body: "**Topics** narrows the list by subject; the search bar finds writers and titles." },
       { testId: "button-write-article", title: "Write your own", body: "**Write** publishes an article under your name. It stays yours wherever you take it." },
     ],

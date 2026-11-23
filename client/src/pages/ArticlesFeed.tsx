@@ -2,10 +2,14 @@ import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { OttoEmpty } from "@/components/OttoEmpty";
 import { MissionBriefing, ARTICLES_BRIEFING } from "@/components/MissionBriefing";
 import { use$ } from "applesauce-react/hooks";
-import { eventStore, FAST_RELAYS, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { eventStore, FAST_RELAYS, feedBaseRelays, fetchProfiles, publishEvent, throttledPoolSubscribe } from "@/lib/nostr";
+import { getOptimalRelaysForFeed } from "@/lib/outbox";
+import { articleBand, type BandSignals } from "@/lib/article-band";
+import { useWiderNetwork } from "@/lib/network-mode";
+import { useFollowsOfFollows } from "@/hooks/use-follows-of-follows";
+import { WiderNetworkDoor } from "@/components/wider-network/WiderNetworkDoor";
 import { getPublishTarget } from "@/lib/outpost-relays";
 import { KIND_LONG_FORM, parseArticle, type ArticleData } from "@/lib/nip23";
-import { trendingArticles } from "@/lib/trending-articles";
 import { clientTags } from "@/lib/nostr-helpers";
 import { signWithTimeout, handleSignerError, isSignerError } from "@/lib/signer-timeout";
 import { createShareMention } from "@/lib/share-mention";
@@ -14,7 +18,6 @@ import { useNostrBookmarks } from "@/hooks/use-nostr-bookmarks";
 import { RelayOutpostLoader, RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { PageTabs } from "@/components/PageTabs";
 import { MediaRow, MediaHero, type MediaItemModel } from "@/components/media/MediaCard";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,7 +38,7 @@ import {
 } from "@/lib/nostr-helpers";
 import { estimateReadingTime } from "@/lib/nip23";
 import { usePrimalStats } from "@/hooks/use-primal-stats";
-import { prefetchStatsImmediate, primalStatsCache, fetchPrimalArticles, getCachedFollowerCount, requestFollowerCounts, onFollowerCountUpdate } from "@/lib/primal-cache";
+import { prefetchStatsImmediate, fetchPrimalArticles } from "@/lib/primal-cache";
 import { useToast } from "@/hooks/use-toast";
 import { UnifiedArticleSearch } from "@/components/UnifiedArticleSearch";
 import { KIND_METADATA, getProfileContent } from "@/lib/nostr-helpers";
@@ -47,13 +50,11 @@ import {
   MessageCircle,
   Heart,
   Repeat2,
-  Users,
   PenSquare,
   BookOpen,
   Hash,
   Share2,
   Send,
-  Flame,
   Bookmark,
   BookmarkCheck,
   ChevronDown,
@@ -66,25 +67,10 @@ import {
 } from "@/components/ui/popover";
 import type { Event } from "nostr-tools";
 import { useSpamFilter } from "@/hooks/use-spam-filter";
-import { useProfileFloor } from "@/hooks/use-profile-floor";
 import { useGrapeRankScores } from "@/contexts/GrapeRankScoresContext";
-import { useStrictnessPreset } from "@/lib/trust-preset";
-import { floorArticles } from "@/lib/article-floor";
-import { getFirstSeen } from "@/lib/account-age";
-import { computeEngagementScore } from "@/lib/engagement";
-import { effectivePow } from "@/lib/nip13-pow";
 import { GuestWall } from "@/components/GuestWall";
 
 const KIND_TEXT_NOTE = 1;
-
-const CURATED_TOPICS = [
-  "ai", "alexandria", "amethyst", "bitcoin", "damus", "decentralization",
-  "dvm", "entrepreneurship", "freedom", "gitcitadel", "lightning", "marmot",
-  "nostr", "nostrrecap", "nostria", "opensource", "otherstuff", "praxeology",
-  "primal", "privacy", "protocols", "saas", "security", "soapbox",
-  "sovereignty", "verification", "war", "web of trust", "whitenoise",
-  "wisp", "wot", "zap", "zapstore",
-];
 
 function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData; onClose: () => void }) {
   const { pubkey, signer, attemptReconnect } = useNostrAuth();
@@ -212,9 +198,10 @@ function ShareArticleToNostrDialog({ article, onClose }: { article: ArticleData;
   );
 }
 
-type FeedTab = "trending" | "latest" | "following";
 
 const PAGE_SIZE = 30;
+/** Authors per relay filter: relays refuse very long author lists. */
+const AUTHOR_CHUNK = 250;
 const SEARCH_DEBOUNCE = 350;
 const MIN_CONTENT_LENGTH = 300;
 const MIN_TITLE_LENGTH = 5;
@@ -416,13 +403,12 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   const { isBookmarked, toggleBookmark } = useNostrBookmarks();
   const [, setLocation] = useLocation();
   useDocumentTitle("Articles");
-  // Trending is the landing lane (owner call, 2026-08-08): it's the strongest
-  // first screen for everyone — a guest's Following is structurally empty, and
-  // a new account's is near-empty, so landing there opened Articles on a blank.
-  // Following/Latest stay one tap away in the same control row.
-  const [tab, setTab] = useState<FeedTab>("trending");
-  const tabRef = useRef(tab);
-  tabRef.current = tab;
+  // Your people first (owner, 2026-11-23). The page has no Following / Latest /
+  // Trending tabs: it opens on people you follow and, only with the wider
+  // network on, adds one band of writers your network vouches for
+  // (lib/article-band.ts). Nobody else is shown.
+  const widerNetworkOn = useWiderNetwork(pubkey);
+  const { fofSet } = useFollowsOfFollows(follows);
   const [shareArticle, setShareArticle] = useState<ArticleData | null>(null);
   const stableOnShare = useMemo(() => pubkey ? setShareArticle : undefined, [pubkey]);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
@@ -451,55 +437,24 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
   const articleIdsRef = useRef(new Set<string>());
   const fetchTokenRef = useRef(0);
   const loadingMoreRef = useRef(false);
-  const [statsVersion, setStatsVersion] = useState(0);
   const [topicsDropdownOpen, setTopicsDropdownOpen] = useState(false);
 
-  // ── Who gets into Latest and Trending (lib/article-floor.ts) ──────────────
-  // People you follow always. Anyone else needs a real profile (a name and a
-  // picture), one earned signal at your Open / Balanced / Strict preset, and a
-  // person's pace (no more than 3 articles a day). Following and one author's
-  // own list aren't filtered; held-back articles are simply not shown. Articles
-  // used to skip every stranger gate the For You feed applies.
+  // ── Who is shown (lib/article-band.ts) ────────────────────────────────────
   const { scores: wotScores, flaggedPubkeys, requestScoresBulk } = useGrapeRankScores();
-  const { preset } = useStrictnessPreset();
-  const { profileGetter, profileSettledGetter, profileVersion } = useProfileFloor(articles);
-  const [followerVersion, setFollowerVersion] = useState(0);
-  useEffect(() => onFollowerCountUpdate(() => setFollowerVersion((v) => v + 1)), []);
-  // Engagement and follower counts come from Primal; without them the floor
-  // steps down rather than emptying the feed (see articleFloor).
-  const [primalSignals, setPrimalSignals] = useState(true);
-  const floorApplies = tab !== "following" && !scopedAuthor;
   useEffect(() => {
-    if (!floorApplies || articles.length === 0) return;
-    const authors = Array.from(new Set(articles.map((e) => e.pubkey)));
-    requestScoresBulk(authors);
-    requestFollowerCounts(authors);
-  }, [floorApplies, articles, requestScoresBulk]);
+    if (!widerNetworkOn || articles.length === 0) return;
+    requestScoresBulk(Array.from(new Set(articles.map((e) => e.pubkey))));
+  }, [widerNetworkOn, articles, requestScoresBulk]);
   const followSet = useMemo(() => new Set(follows), [follows]);
-  const visibleArticles = useMemo(() => {
-    const moderated = moderationFilter(articles);
-    if (!floorApplies) return moderated;
-    return floorArticles<Event>(
-      moderated,
-      {
-        isFollowed: (pk) => followSet.has(pk) || pk === pubkey,
-        wotScore: (pk) => wotScores?.get(pk),
-        flagged: (pk) => !!flaggedPubkeys?.has(pk),
-        profile: profileGetter,
-        profileSettled: profileSettledGetter,
-        engagementScore: (e) => computeEngagementScore(primalStatsCache.get(e.id) ?? null),
-        firstSeen: getFirstSeen,
-        followerCount: getCachedFollowerCount,
-        powDifficulty: effectivePow,
-        signalsAvailable: primalSignals,
-      },
-      preset,
-      Math.floor(Date.now() / 1000),
-    ).shown;
-    // profileVersion / followerVersion / statsVersion re-run the floor when a
-    // profile, follower count or engagement arrives after the articles did.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [articles, moderationFilter, floorApplies, followSet, pubkey, wotScores, flaggedPubkeys, profileVersion, followerVersion, statsVersion, primalSignals, preset]);
+  const bandSignals = useMemo<BandSignals>(() => ({
+    me: pubkey,
+    isFollowed: (pk) => followSet.has(pk),
+    followedByFollows: (pk) => fofSet.has(pk),
+    trustScore: (pk) => wotScores?.get(pk),
+    flagged: (pk) => !!flaggedPubkeys?.has(pk),
+    widerNetworkOn,
+  }), [pubkey, followSet, fofSet, wotScores, flaggedPubkeys, widerNetworkOn]);
+  const visibleArticles = useMemo(() => moderationFilter(articles), [articles, moderationFilter]);
 
   useEffect(() => {
     const key = "relay-outpost-scroll-/articles";
@@ -572,9 +527,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     if (newEvents.length > 0) {
       setArticles((prev) => [...prev, ...newEvents]);
       const eventIds = newEvents.map((e) => e.id);
-      prefetchStatsImmediate(eventIds).then(() => {
-        if (fetchTokenRef.current === token) setStatsVersion((v) => v + 1);
-      }).catch(() => {});
+      prefetchStatsImmediate(eventIds).catch(() => {});
     }
 
     setLoading(false);
@@ -593,21 +546,27 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     const relayUntil = isMore ? relayUntilRef.current : until;
     const primalUntil = isMore ? primalUntilRef.current : until;
 
-    const filter: any = {
-      kinds: [KIND_LONG_FORM],
-      limit: PAGE_SIZE,
-      until: relayUntil,
-    };
-
-    if (scopedAuthor) {
-      filter.authors = [scopedAuthor.pubkey];
-    } else if (tab === "following" && follows.length > 0) {
-      filter.authors = follows;
-    }
-
     const topic = searchQuery ? searchQuery.toLowerCase().replace(/^#/, "") : undefined;
-    if (topic) {
-      filter["#t"] = [topic];
+    const base: any = { kinds: [KIND_LONG_FORM], limit: PAGE_SIZE, until: relayUntil };
+    if (topic) base["#t"] = [topic];
+
+    // What is asked, and of whom. One writer's own list; else the people you
+    // follow, read from the base relays plus those writers' own relays, in
+    // chunks a relay will accept; and, only with the wider network on, the
+    // open network (sorted into bands afterwards). With nobody followed and
+    // the wider network off there is nothing to ask: never an unscoped query
+    // standing in for "following".
+    const queries: { relays: string[]; filter: any }[] = [];
+    if (scopedAuthor) {
+      queries.push({ relays: FAST_RELAYS, filter: { ...base, authors: [scopedAuthor.pubkey] } });
+    } else {
+      if (follows.length > 0) {
+        const relays = Array.from(new Set([...feedBaseRelays(), ...getOptimalRelaysForFeed(follows, 6)]));
+        for (let i = 0; i < follows.length; i += AUTHOR_CHUNK) {
+          queries.push({ relays, filter: { ...base, authors: follows.slice(i, i + AUTHOR_CHUNK) } });
+        }
+      }
+      if (widerNetworkOn) queries.push({ relays: FAST_RELAYS, filter: base });
     }
 
     const relayCollected: Event[] = [];
@@ -621,34 +580,30 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
       mergeAndApply(relayCollected, primalCollected, token, primalFailed, scopedAuthor?.pubkey);
     };
 
-    if (relayHasMoreRef.current || !isMore) {
-      const sub = throttledPoolSubscribe(FAST_RELAYS, filter, {
-        onevent(event: Event) {
-          eventStore.add(event);
-          relayCollected.push(event);
-        },
-        oneose() {
-          sub.close();
-          relayDone = true;
-          tryFinalize();
-        },
-      });
+    if (queries.length > 0 && (relayHasMoreRef.current || !isMore)) {
+      let open = queries.length;
+      for (const q of queries) {
+        const sub = throttledPoolSubscribe(q.relays, q.filter, {
+          onevent(event: Event) {
+            eventStore.add(event);
+            relayCollected.push(event);
+          },
+          oneose() {
+            sub.close();
+            if (--open === 0) { relayDone = true; tryFinalize(); }
+          },
+        });
+      }
     } else {
       relayDone = true;
     }
 
-    // Skip Primal's long_form_content_feed when scoping to an author — it ignores
-    // the pubkey param (returns the generic latest feed), so it can't scope and
-    // would just paginate through others' articles we then filter out. The
-    // relay query (authors: [pubkey]) is the correct author-scoped source.
-    if (tab !== "following" && !scopedAuthor && (primalHasMoreRef.current || !isMore)) {
-      fetchPrimalArticles(PAGE_SIZE, primalUntil, topic).then(({ articles, statsLoaded }) => {
+    if (widerNetworkOn && !scopedAuthor && (primalHasMoreRef.current || !isMore)) {
+      fetchPrimalArticles(PAGE_SIZE, primalUntil, topic).then(({ articles }) => {
         primalCollected.push(...articles);
-        setPrimalSignals(statsLoaded);
         primalDone = true;
         tryFinalize();
       }).catch(() => {
-        setPrimalSignals(false);
         primalFailed = true;
         primalDone = true;
         tryFinalize();
@@ -660,7 +615,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     if (relayDone && primalDone) {
       tryFinalize();
     }
-  }, [tab, follows, searchQuery, scopedAuthor, mergeAndApply]);
+  }, [widerNetworkOn, follows, searchQuery, scopedAuthor, mergeAndApply]);
 
   useEffect(() => {
     fetchTokenRef.current++;
@@ -673,7 +628,7 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     primalHasMoreRef.current = true;
     setHasMoreArticles(true);
     fetchArticles(now);
-  }, [tab, searchQuery, scopedAuthor, fetchArticles]);
+  }, [searchQuery, scopedAuthor, fetchArticles]);
 
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMoreArticles) return;
@@ -686,7 +641,6 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     searchTimer.current = setTimeout(() => {
       const q = searchInput.trim();
       setSearchQuery(q);
-      if (q && tabRef.current === "following") setTab("latest");
     }, SEARCH_DEBOUNCE);
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -740,24 +694,30 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     }
 
     return parsed.sort((a, b) => b.publishedAt - a.publishedAt);
-  }, [visibleArticles, tab]);
+  }, [visibleArticles]);
 
   // Trending ranks by Primal's engagement numbers, but never drops an article
   // whose numbers haven't come (lib/trending-articles.ts): it used to say
   // "No articles" over a page of fetched ones while they loaded or when
   // Primal was down.
-  const { sortedArticles, trendingRanked } = useMemo(() => {
-    if (tab === "trending") {
-      const t = trendingArticles(parsedArticles, (id) => primalStatsCache.get(id), Date.now() / 1000);
-      return { sortedArticles: t.articles, trendingRanked: t.ranked };
+  // The two bands, each newest first. One writer's own list is a list you
+  // chose, so it is shown whole.
+  const { yours, circle } = useMemo(() => {
+    if (scopedAuthor) return { yours: parsedArticles, circle: [] as ArticleData[] };
+    const yours: ArticleData[] = [];
+    const circle: ArticleData[] = [];
+    for (const a of parsedArticles) {
+      const band = articleBand(a.event.pubkey, bandSignals);
+      if (band === "yours") yours.push(a);
+      else if (band === "circle") circle.push(a);
     }
-    return { sortedArticles: parsedArticles, trendingRanked: true };
-  }, [parsedArticles, tab, statsVersion]);
-
+    return { yours, circle };
+  }, [parsedArticles, bandSignals, scopedAuthor]);
+  const shownArticles = useMemo(() => [...yours, ...circle], [yours, circle]);
 
   const popularTags = useMemo(() => {
     const tagCounts = new Map<string, number>();
-    for (const a of parsedArticles) {
+    for (const a of shownArticles) {
       for (const t of a.hashtags) {
         const lower = t.toLowerCase();
         tagCounts.set(lower, (tagCounts.get(lower) ?? 0) + 1);
@@ -768,18 +728,23 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12)
       .map(([tag]) => tag);
-  }, [parsedArticles]);
+  }, [shownArticles]);
 
-  const tabs: { id: FeedTab; label: string; icon: typeof Clock }[] = [
-    { id: "following", label: "Following", icon: Users },
-    { id: "latest", label: "Latest", icon: Clock },
-    { id: "trending", label: "Trending", icon: Flame },
-  ];
+  const renderCard = (article: ArticleData, asHero: boolean) => {
+    const coord = `${KIND_LONG_FORM}:${article.event.pubkey}:${article.dTag}`;
+    return (
+      <ArticleCard
+        key={article.event.id}
+        article={article}
+        asHero={asHero}
+        onShare={stableOnShare}
+        isBookmarked={isBookmarked(coord)}
+        coord={coord}
+        toggleBookmark={toggleBookmark}
+      />
+    );
+  };
 
-  // Hard wall (owner decision, 2026-08-14): the library is a browse surface,
-  // so guests meet the wall outright — the earlier 8-article taste is gone.
-  // A shared SINGLE article (/articles/:naddr) still renders for guests;
-  // that link is the acquisition hook, this page is membership.
   if (!pubkey) {
     return (
       <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-4 py-4"} data-testid="page-articles">
@@ -794,33 +759,14 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
     <div className={embedded ? "" : "max-w-5xl mx-auto px-3 sm:px-4 py-4"}>
       <MissionBriefing pageId="articles" steps={ARTICLES_BRIEFING} />
       {/* One slim control row: sort (Following·Latest·Trending) + Write. */}
-      <div data-testid="articles-tab-switcher">
-      <div className="hidden sm:flex items-center justify-between gap-2 mb-4">
-        <PageTabs
-          equalWidth={false}
-          ariaLabel="Article scope"
-          active={tab}
-          onChange={(key) => setTab(key as FeedTab)}
-          tabs={tabs.map((t) => ({
-            key: t.id,
-            label: t.label,
-            icon: t.icon,
-            disabled: t.id === "following" && !pubkey,
-            testId: `button-tab-${t.id}`,
-          }))}
-        />
-        {pubkey && (
+      {pubkey && (
+        <div className="hidden sm:flex items-center justify-end gap-2 mb-4">
           <Button variant="default" size="sm" onClick={() => setLocation("/articles/write")} data-testid="button-write-article">
             <PenSquare className="w-3.5 h-3.5 mr-1.5" />
             Write
           </Button>
-        )}
-      </div>
-
-      {/* Mobile has no separate scope row: the scope (Following/Latest/Trending)
-          lives in the combined filter chip on the single control row below, and
-          Write rides that row as an icon. One row of filters, then content. */}
-      </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4">
         <Popover open={topicsDropdownOpen} onOpenChange={setTopicsDropdownOpen}>
@@ -837,35 +783,11 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
               {/* Mobile: the chip is the combined scope+topic filter, so label it
                   with the active scope (or the active #topic). Desktop keeps
                   "Topics" — scope has its own button row there. */}
-              <span className="sm:hidden">{searchQuery ? `#${searchQuery}` : (tabs.find((t) => t.id === tab)?.label ?? "Filter")}</span>
-              <span className="hidden sm:inline">{searchQuery ? `#${searchQuery}` : "Topics"}</span>
+              <span>{searchQuery ? `#${searchQuery}` : "Topics"}</span>
               <ChevronDown className="h-4 w-4 opacity-50" />
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 p-1.5 max-h-80 overflow-y-auto">
-            <div className="sm:hidden">
-              <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Show</p>
-              {tabs.map((t) => {
-                const isActive = tab === t.id;
-                const disabled = t.id === "following" && !pubkey;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => { if (!disabled) { setTab(t.id); setTopicsDropdownOpen(false); } }}
-                    disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
-                      isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
-                    } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
-                    data-testid={`dropdown-tab-${t.id}`}
-                  >
-                    {isActive && <span className="w-1 h-1 rounded-full bg-primary shrink-0" />}
-                    <t.icon className="w-3.5 h-3.5" />
-                    {t.label}
-                  </button>
-                );
-              })}
-              <div className="my-1 border-t border-border/30" />
-            </div>
             {searchQuery && (
               <button
                 onClick={() => { setSearchInput(""); setSearchQuery(""); setTopicsDropdownOpen(false); }}
@@ -876,34 +798,18 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
                 Clear filter
               </button>
             )}
-            <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Curated</p>
-            {CURATED_TOPICS.map((tag) => {
-              const isActive = searchQuery === tag;
-              return (
-                <button
-                  key={tag}
-                  onClick={() => { setSearchInput(tag); setSearchQuery(tag); if (tab === "following") setTab("latest"); setTopicsDropdownOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                    isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
-                  }`}
-                  data-testid={`dropdown-topic-${tag}`}
-                >
-                  {isActive && <span className="w-1 h-1 rounded-full bg-primary shrink-0" />}
-                  <Hash className="w-3 h-3" />
-                  {tag}
-                </button>
-              );
-            })}
-            {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).length > 0 && (
+            {/* Topics are counted from the articles on the page: no preset list. */}
+            {popularTags.length === 0 ? (
+              <p className="px-3 py-2 text-[13px] text-muted-foreground" data-testid="text-no-topics">Topics show up here as articles load.</p>
+            ) : (
               <>
-                <div className="my-1 border-t border-border/30" />
-                <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">Trending</p>
-                {popularTags.filter((t) => !CURATED_TOPICS.includes(t)).map((tag) => {
+                <p className="px-3 py-1.5 text-[13px] text-muted-foreground font-medium">On this page</p>
+                {popularTags.map((tag) => {
                   const isActive = searchQuery === tag;
                   return (
                     <button
                       key={tag}
-                      onClick={() => { setSearchInput(tag); setSearchQuery(tag); if (tab === "following") setTab("latest"); setTopicsDropdownOpen(false); }}
+                      onClick={() => { setSearchInput(tag); setSearchQuery(tag); setTopicsDropdownOpen(false); }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
                         isActive ? "bg-primary/15 text-foreground font-medium" : "text-muted-foreground hover:bg-muted/50"
                       }`}
@@ -927,12 +833,10 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
               setScopedAuthor(null);
               setSearchInput(sel.tag);
               setSearchQuery(sel.tag);
-              if (tabRef.current === "following") setTab("latest");
             } else if (sel.type === "author") {
               setSearchInput("");
               setSearchQuery("");
               setScopedAuthor({ pubkey: sel.pubkey, displayName: sel.displayName, picture: sel.picture });
-              if (tabRef.current === "following") setTab("latest");
             } else if (sel.type === "article") {
               setLocation(`/articles/${sel.naddr}`);
             }
@@ -975,46 +879,43 @@ export default function ArticlesFeed({ embedded = false }: { embedded?: boolean 
         <div className="flex flex-col items-center justify-center py-12">
           <RelayOutpostLoader size="lg" label="Scanning relays for articles..." />
         </div>
-      ) : sortedArticles.length === 0 ? (
-        <div className="text-center py-12">
-          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground" />
-          <p className="text-sm text-muted-foreground" data-testid="text-no-articles">
-            {searchQuery ? "No articles found for this search." : tab === "following" ? "No articles from people you follow." : "No articles found."}
-          </p>
-        </div>
       ) : (
         <>
-          <p className="text-[12px] text-muted-foreground mb-3 font-medium">
-            {sortedArticles.length} article{sortedArticles.length !== 1 ? "s" : ""}
-          </p>
-          {tab === "trending" && !trendingRanked && (
-            <p className="text-xs text-muted-foreground mb-3" data-testid="text-trending-unranked">
-              Newest first for now: engagement numbers aren't in yet.
-            </p>
-          )}
+          {/* People you follow, or one writer's own list. */}
+          <section data-testid="articles-band-yours">
+            {!scopedAuthor && <h2 className="text-[15px] font-semibold text-foreground mb-3">From people you follow</h2>}
+            {yours.length === 0 ? (
+              <div className="text-center py-10">
+                <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground" />
+                <p className="text-sm text-muted-foreground" data-testid="text-articles-yours-empty">
+                  {scopedAuthor
+                    ? "No articles from this writer."
+                    : searchQuery
+                      ? "No articles from people you follow match this."
+                      : follows.length === 0
+                        ? "Nothing here yet. Follow a writer and their articles appear here."
+                        : "No articles from people you follow yet."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">{yours.map((article, i) => renderCard(article, i === 0))}</div>
+            )}
+          </section>
 
-          <div className="space-y-2">
-            {sortedArticles.map((article, i) => {
-              const coord = `${KIND_LONG_FORM}:${article.event.pubkey}:${article.dTag}`;
-              const heroBadge = tab === "following"
-                ? <><Users className="w-3 h-3" /> Following</>
-                : tab === "trending"
-                  ? <><Flame className="w-3 h-3" /> Trending</>
-                  : <><Clock className="w-3 h-3" /> Latest</>;
-              return (
-                <ArticleCard
-                  key={article.event.id}
-                  article={article}
-                  asHero={i === 0}
-                  heroBadge={heroBadge}
-                  onShare={stableOnShare}
-                  isBookmarked={isBookmarked(coord)}
-                  coord={coord}
-                  toggleBookmark={toggleBookmark}
-                />
-              );
-            })}
-          </div>
+          {/* Writers your network vouches for: only with the wider network on,
+              and only when there are some. */}
+          {!scopedAuthor && widerNetworkOn && circle.length > 0 && (
+            <section className="mt-8" data-testid="articles-band-circle">
+              <h2 className="text-[15px] font-semibold text-foreground">From your wider circle</h2>
+              <p className="text-[13px] text-muted-foreground mb-3">Writers followed by people you follow, or trusted by your trust settings.</p>
+              <div className="space-y-2">{circle.map((article) => renderCard(article, false))}</div>
+            </section>
+          )}
+          {!scopedAuthor && !widerNetworkOn && (
+            <div className="mt-6">
+              <WiderNetworkDoor compact testId="wider-network-door-articles" />
+            </div>
+          )}
 
           <ScrollSentinel onLoadMore={loadMore} isLoading={loadingMore} hasMore={hasMoreArticles} />
         </>
