@@ -5237,6 +5237,14 @@ export default function Outposts() {
       return next;
     });
   }, []);
+  // The joined list changes outside this page's own state: leaving from a
+  // card, joining from search, another device's list arriving. Without this
+  // the card you just left stayed until a reload (owner, 2026-11-22).
+  useEffect(() => {
+    const sync = () => setJoinedRelays(getOutpostRelays());
+    window.addEventListener("outpost-relays-changed", sync);
+    return () => window.removeEventListener("outpost-relays-changed", sync);
+  }, []);
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current || !pubkey || joinedRelays.length > 0) return;
