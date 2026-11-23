@@ -1,19 +1,22 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { condenseBio } from "@/lib/condense-bio";
+import { FullBioContext } from "./phone-about";
 
 /**
  * A profile bio on a phone: at most three lines, blank lines squeezed out, so
  * every profile reads the same length (owner, 2026-09-29). "Show more" appears
  * only when there's more, and gives back the author's own layout. Wider
- * screens show the bio as written.
+ * screens show the bio as written, and so does a phone's About (the place
+ * you go to read all of it).
  */
 export function CollapsibleBio({ text, render }: { text: string; render: (text: string) => ReactNode }) {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
-  const collapsed = isMobile && !expanded;
+  const whole = useContext(FullBioContext);
+  const collapsed = isMobile && !whole && !expanded;
 
   // Measured, not guessed: the toggle shows only when the three lines hide text.
   useLayoutEffect(() => {
@@ -26,7 +29,7 @@ export function CollapsibleBio({ text, render }: { text: string; render: (text: 
     return () => ro?.disconnect();
   }, [collapsed, text]);
 
-  if (!isMobile) return <>{render(text)}</>;
+  if (!isMobile || whole) return <>{render(text)}</>;
 
   return (
     <div>

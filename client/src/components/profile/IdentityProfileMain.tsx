@@ -7,7 +7,7 @@
  * Reuses the profile page's already-loaded data (allNotes / replyNotes /
  * mediaUrls) and the shared NostrPost renderer — no data-layer fork.
  */
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { nip19, type Event } from "nostr-tools";
 import { useLocation } from "wouter";
 import { NostrPost } from "@/components/NostrPost";
@@ -30,6 +30,7 @@ import { ProfileShopGrid, useProfileListings } from "@/components/ListingCard";
 import { ReplyMarginContext, MARGIN_NOTES_MIN_WIDTH } from "@/components/nostr-post/reply-margin";
 import { Play } from "lucide-react";
 import { TILE_TITLE } from "@/components/discover-tile-title";
+import { PhoneAboutContext } from "@/components/profile/phone-about";
 
 /**
  * The chip row IS the filter — there is no second control nested inside "All".
@@ -37,7 +38,7 @@ import { TILE_TITLE } from "@/components/discover-tile-title";
  * already chips; the thing genuinely missing was originals-only, so that became
  * a chip too rather than a mode inside another mode.
  */
-type StreamFilter = "all" | "posts" | "replies" | "articles" | "media" | "shop";
+type StreamFilter = "all" | "posts" | "replies" | "articles" | "media" | "shop" | "about";
 
 /** Videos render as a poster + ▶ in the montage; images as <img>. */
 
@@ -163,7 +164,21 @@ export function IdentityProfileMain({
    */
   shopPubkey?: string | null;
 }) {
-  const [filter, setFilter] = useState<StreamFilter>("all");
+  const [chosen, setFilter] = useState<StreamFilter>("all");
+  // A phone opens on the posts: what sat above them is under the About chip
+  // (phone-about.tsx). Null on wider screens, where nothing moves.
+  const about = useContext(PhoneAboutContext);
+  // No All chip on a phone: six chips ran off a 390px screen and hid About,
+  // and Posts is what the page opens on there (owner, 2026-11-22).
+  const filter: StreamFilter = about ? (chosen === "all" ? "posts" : chosen) : (chosen === "about" ? "all" : chosen);
+  const chipsRef = useRef<HTMLDivElement | null>(null);
+  // The head's "more" opens About, and brings the chips into view.
+  const openRequest = about?.openRequest ?? 0;
+  useEffect(() => {
+    if (!openRequest) return;
+    setFilter("about");
+    chipsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [openRequest]);
   // Montage = a VISUAL glance: photos + video posters, in post order. Tapping a
   // photo opens the gallery lightbox at that photo; tapping a video opens the
   // channel-surf theater at that video. (Audio/articles aren't visual-glance
@@ -178,8 +193,12 @@ export function IdentityProfileMain({
   const [montageVideoStart, setMontageVideoStart] = useState<number | null>(null);
 
   const listings = useProfileListings(shopPubkey);
+  // Presence — one quiet line: lifetime totals and what they post about. It
+  // draws nothing when there is nothing to say.
+  const presence = <IdentityPresence totalPosts={stats?.totalPosts} totalReplies={stats?.totalReplies} totalArticles={stats?.totalArticles} joinedAt={stats?.joinedAt} topics={topics} />;
+  const hasPresence = !!(stats?.totalPosts || stats?.totalReplies || stats?.totalArticles) || topics.length >= 2;
   const filters: { key: StreamFilter; label: string }[] = [
-    { key: "all", label: "All" },
+    ...(about ? [] : [{ key: "all" as const, label: "All" }]),
     { key: "posts", label: "Posts" },
     { key: "replies", label: "Replies" },
     // Between Replies and Media: the chips run from most conversational to most
@@ -189,6 +208,8 @@ export function IdentityProfileMain({
     // Last: what they make, then what they sell. Never offered to someone
     // with nothing listed — a Shop chip that opens on nothing is a dead control.
     ...(listings.length > 0 ? [{ key: "shop" as const, label: "Shop" }] : []),
+    // Phones only, and only with something behind it.
+    ...(about && (about.hasSections || hasPresence) ? [{ key: "about" as const, label: "About" }] : []),
   ];
 
   const selectFilter = (key: StreamFilter) => {
@@ -261,20 +282,16 @@ export function IdentityProfileMain({
           The follower counts and activity status live under the name, in the
           identity card. Deliberately NOT a posts-per-week / contribution-graph
           dashboard. */}
-      <IdentityPresence
-        totalPosts={stats?.totalPosts}
-        totalReplies={stats?.totalReplies}
-        totalArticles={stats?.totalArticles}
-        joinedAt={stats?.joinedAt}
-        topics={topics}
-      />
+      {!about && presence}
 
       {/* Media montage — the page leads with what they MAKE, not a text wall.
           Inset to the same gutter every card in this column uses for its own
           content: this section has no card around it, so without the padding it
           sat 13px left of the Details and Circle text above it and the post text
           below it — three different left edges down one scroll. */}
-      {montageMedia.length > 0 && (
+      {/* Not on a phone: the Media chip opens the whole library, and the strip
+          cost a third of the first screen (owner, 2026-11-22). */}
+      {!about && montageMedia.length > 0 && (
         <section className="mb-4 px-3">
           <div className="flex items-center justify-between mb-2">
             <h2 className={TILE_TITLE}>
@@ -341,7 +358,7 @@ export function IdentityProfileMain({
           offers 316, so wrapping put "Media" alone on a second row looking like
           a mistake. Tighter chip padding fits all five on a normal phone; a
           narrower one swipes instead of stacking. */}
-      <div className="flex items-center gap-1.5 mb-3 px-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={chipsRef} className="flex items-center gap-1.5 mb-3 px-3 scroll-mt-20 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filters.map((f) => {
           // Confirmed-empty chips DIM (lib/profile-chips.ts: unknown never
           // dims, data un-dims) but stay tappable — the tap lands on an honest
@@ -372,7 +389,7 @@ export function IdentityProfileMain({
       {/* Media opens the full library (photos · videos · audio · live ·
           articles) via the classic MediaSection's sub-tabs; everything else is
           the note stream, each post its OWN card with breathing room. */}
-      {filter !== "articles" && filter !== "media" && filter !== "shop" && (
+      {filter !== "articles" && filter !== "media" && filter !== "shop" && filter !== "about" && (
         <ProfileCompanion streamRef={streamRef} chapters={companionChapters} media={companionMedia} hasMore={hasMore} />
       )}
       {filter === "articles" ? (
@@ -381,6 +398,11 @@ export function IdentityProfileMain({
         <div data-testid="identity-media">{mediaSlot}</div>
       ) : filter === "shop" ? (
         <ProfileShopGrid listings={listings} />
+      ) : filter === "about" ? (
+        <div className="flex flex-col gap-4" data-testid="identity-about-tab">
+          {about?.sections}
+          {presence}
+        </div>
       ) : (
       <div ref={streamRef} className="flex flex-col gap-3">
         {stream.length === 0 && notesLoaded ? (
