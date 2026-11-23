@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
+import { createPortal } from "react-dom";
+import { useHeaderIdentitySlot } from "@/hooks/use-header-identity-slot";
 import { OttoEmpty } from "@/components/OttoEmpty";
 import { useIaCollapsed } from "@/lib/ia-prefs";
 import { Button } from "@/components/ui/button";
@@ -30,7 +32,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Undo2,
-  Users, MoreHorizontal, } from "lucide-react";
+  Users, MoreHorizontal, SquarePen, } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import type { ISigner } from "applesauce-signers";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
@@ -1044,12 +1046,58 @@ export function ChatList({
   // control on the rail or the filter row.
   const deletedCount = hiddenConvos.size + hiddenMsgIds.size;
   const homeMenu = chatHomeMenu({ isMobile, privateMasked, hasPetnames: hasAnyPetnames(), showingRealNames: isShowingRealNames(), deletedCount });
+  const headerSlot = useHeaderIdentitySlot();
+  const newInTopBar = isMobile && !!headerSlot && !selectedPubkey;
   const runHomeMenu = (key: (typeof homeMenu)[number]["key"]) => {
     if (key === "private") togglePrivateMasked();
     else if (key === "refresh") doRefresh();
     else if (key === "real-names") toggleShowRealNames();
     else if (key === "deleted") setShowDeleted(true);
   };
+
+  // The utilities menu: beside the search field on wide screens, inside its
+  // right end on a phone.
+  const homeMenuControl = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 touch-target"
+          aria-label={privateMasked ? "Chats are hidden — more" : "More"}
+          title="More"
+          data-testid="button-chat-home-menu"
+        >
+          {privateMasked
+            ? <Eye className="w-4 h-4 text-foreground" />
+            : <MoreHorizontal className="w-4 h-4 text-muted-foreground/70" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="glass-dropdown min-w-[220px]">
+        {homeMenu.map((item) => (
+          <DropdownMenuItem
+            key={item.key}
+            className="gap-2.5 cursor-pointer py-2"
+            onClick={() => runHomeMenu(item.key)}
+            disabled={item.key === "refresh" && refreshing}
+            data-testid={`menu-chat-home-${item.key}`}
+          >
+            {item.key === "private" && (privateMasked ? <Eye className="w-4 h-4 text-foreground" /> : <EyeOff className="w-4 h-4" />)}
+            {item.key === "refresh" && (
+              refreshResult === "up-to-date"
+                ? <Check className="w-4 h-4 text-emerald-500" data-testid="icon-refresh-done" />
+                : refreshResult === "unreachable"
+                  ? <RefreshCw className="w-4 h-4 text-amber-500" data-testid="icon-refresh-unreachable" />
+                  : <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            )}
+            {item.key === "real-names" && <BookUser className="w-4 h-4" />}
+            {item.key === "deleted" && <Archive className="w-4 h-4" />}
+            <span className="text-sm">{item.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   return (
     <>
       {/* No "Messages" title — the bottom nav labels this tab. Back, the
@@ -1136,6 +1184,9 @@ export function ChatList({
             onKeyDown={(e) => { if (e.key === "Enter" && keyQuery) handleNewChat(); }}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
+            // Phones: the menu sits inside the field's right end, so the field
+            // runs the full width of the row.
+            trailing={isMobile && !searchExpanded ? homeMenuControl : undefined}
             data-testid="input-search-conversations"
           />
         {/* The way OUT of the expanded state: clears and collapses in one tap.
@@ -1186,45 +1237,7 @@ export function ChatList({
               list of items and their order is helpers.chatHomeMenu. While
               chats are hidden the trigger wears the eye, so the way back is
               visible without opening anything. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0 touch-target"
-                aria-label={privateMasked ? "Chats are hidden — more" : "More"}
-                title="More"
-                data-testid="button-chat-home-menu"
-              >
-                {privateMasked
-                  ? <Eye className="w-4 h-4 text-foreground" />
-                  : <MoreHorizontal className="w-4 h-4 text-muted-foreground/70" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass-dropdown min-w-[220px]">
-              {homeMenu.map((item) => (
-                <DropdownMenuItem
-                  key={item.key}
-                  className="gap-2.5 cursor-pointer py-2"
-                  onClick={() => runHomeMenu(item.key)}
-                  disabled={item.key === "refresh" && refreshing}
-                  data-testid={`menu-chat-home-${item.key}`}
-                >
-                  {item.key === "private" && (privateMasked ? <Eye className="w-4 h-4 text-foreground" /> : <EyeOff className="w-4 h-4" />)}
-                  {item.key === "refresh" && (
-                    refreshResult === "up-to-date"
-                      ? <Check className="w-4 h-4 text-emerald-500" data-testid="icon-refresh-done" />
-                      : refreshResult === "unreachable"
-                        ? <RefreshCw className="w-4 h-4 text-amber-500" data-testid="icon-refresh-unreachable" />
-                        : <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-                  )}
-                  {item.key === "real-names" && <BookUser className="w-4 h-4" />}
-                  {item.key === "deleted" && <Archive className="w-4 h-4" />}
-                  <span className="text-sm">{item.label}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!isMobile && homeMenuControl}
           {/* A LABELLED, FILLED CTA — not a ghost "+".
               Starting a conversation is the single most important action on an
               empty or near-empty chat home, and it was rendered as the lowest-
@@ -1234,15 +1247,37 @@ export function ChatList({
               drawer on touch, anchored dropdown on desktop); only its weight
               and its label are. */}
           {isMobile ? (
-            <Button
-              size="sm"
-              className="h-9 gap-1.5 px-3 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-              onClick={() => setCreateOpen(true)}
-              data-testid="button-new-chat"
-            >
-              <Plus className="w-4 h-4" />
-              New
-            </Button>
+            // Phones: starting something new is a compose icon in the app's
+            // top bar, beside search (owner, 2026-11-22: no white button on the
+            // right of the search field). Only while this list is the screen:
+            // it stays mounted, hidden, behind an open chat.
+            newInTopBar
+              ? createPortal(
+                  <div className="ml-auto flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setCreateOpen(true)}
+                      aria-label="New chat"
+                      title="New chat"
+                      className="hit-area flex items-center justify-center w-9 h-9 rounded-full text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
+                      data-testid="button-new-chat"
+                    >
+                      <SquarePen className="w-5 h-5" />
+                    </button>
+                  </div>,
+                  headerSlot!,
+                )
+              : selectedPubkey ? null : (
+                <Button
+                  size="sm"
+                  className="h-9 gap-1.5 px-3 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                  onClick={() => setCreateOpen(true)}
+                  data-testid="button-new-chat"
+                >
+                  <Plus className="w-4 h-4" />
+                  New
+                </Button>
+              )
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
