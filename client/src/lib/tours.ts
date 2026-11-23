@@ -41,7 +41,7 @@ export const TOURS: Record<TourId, Tour> = {
     path: "/",
     steps: [
       { testId: null, title: "Your space", body: "A quick tour, {steps} short steps. The feed is posts from the people you follow and your communities. The wider network stays off until you turn it on, in Settings › Your space." },
-      { testId: null, title: "Following, For you, Trending", body: "The tabs up top. **Following** is just your people. **For you** and **Trending** open up once the wider network is on." },
+      { testId: null, title: "Following, For you, Trending", body: "The tabs up top. **Following** is just your people. **Trending** is what your circle is reacting to. **For you** opens up once the wider network is on." },
       { testId: "button-fab-compose", title: "New post", body: "The round **New post** button at the bottom right. Photos, hashtags and mentions all work." },
       { testId: "mobile-nav-create", title: "New post", body: "The **centre button** in the bottom bar. Photos, hashtags and mentions all work." },
     ],

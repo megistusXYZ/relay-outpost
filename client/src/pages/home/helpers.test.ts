@@ -120,7 +120,8 @@ describe("initialFeedMode — where the page starts, before sign-in and follows 
 describe("feedBodyFor — a feed, or the door to the wider network", () => {
   it("off: For you and Trending are the door", () => {
     expect(feedBodyFor("raw_signal", false)).toBe("door");
-    expect(feedBodyFor("deep_scan", false)).toBe("door");
+    // Trending is ranked from your own circle (2026-11-23): off, that is the people you follow.
+    expect(feedBodyFor("deep_scan", false)).toBe("feed");
   });
   it("off: Following and custom feeds are still feeds", () => {
     expect(feedBodyFor("open_comms", false)).toBe("feed");

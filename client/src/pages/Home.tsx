@@ -8,19 +8,22 @@ import { reachAdmits } from "@/lib/trust-reach";
 import { flushSync } from "react-dom";
 import { eventStore, subscribeToFeed, subscribeToFeedPersistent, fetchProfilesCached, fetchInteractionsCached, isProfileFetchSettled, FAST_RELAYS, feedBaseRelays, getRelaysForPurpose, markFeedDataLoaded, hasFeedData, throttledPoolSubscribe, registerProfileInAllCaches } from "@/lib/nostr";
 import { takeFirstScreen } from "@/lib/first-screen";
-import { overallRanking } from "@/lib/trending-source";
+import { fetchCircleTrending, coverageNote } from "@/lib/circle-trending-source";
+import { rankCircleTrending, type Interaction } from "@/lib/circle-trending";
+import { articleBand } from "@/lib/article-band";
+import { queryAnswered } from "@/lib/relay-reach";
 import { firstScreenRanks, firstScreenTaken, subscribeFirstScreenRanks } from "@/lib/first-screen-ingest";
 import { chooseDiscoverLens } from "@/lib/discover-trust";
 import { getCachedFeedEvents, cacheFeedEvents } from "@/lib/indexeddb-cache";
 import { fetchRelayLists, getOptimalRelaysForFeed } from "@/lib/outbox";
 import { KIND_TEXT_NOTE, KIND_REPOST } from "@/lib/nostr-helpers";
-import { fetchTrendingFeed, fetchGlobalFeed, fetchFollowsFeed, requestFollowerCounts, getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, getLastReplyTimestamp, updateLastReplyTimestamp, getReplyParentId } from "@/lib/primal-cache";
+import { fetchGlobalFeed, fetchFollowsFeed, requestFollowerCounts, getCachedFollowerCount, onFollowerCountUpdate, prefetchStatsImmediate, primalStatsCache, getLastReplyTimestamp, updateLastReplyTimestamp, getReplyParentId } from "@/lib/primal-cache";
 import { MIN_FOLLOWERS_GLOBAL, isMachineReadableContent, type ReachDepth } from "@/lib/spam-filter";
 import { NostrPost, ParentUnresolvedContext } from "@/components/NostrPost";
 import { PollPost } from "@/components/PollPost";
 import { isPollEvent, KIND_POLL } from "@/lib/polls";
 import { feedKinds, mediaPageLimit } from "@/lib/feed-kinds";
-import { mergeSupplementIntoFeed, splitSupplement, spreadAuthors, trendingList } from "@/lib/feed-merge";
+import { mergeSupplementIntoFeed, splitSupplement, spreadAuthors } from "@/lib/feed-merge";
 import { capForGuest } from "@/lib/guest-limits";
 import { GuestWall } from "@/components/GuestWall";
 import { MEDIA_EVENT_KINDS } from "@/lib/media-frame";
@@ -57,7 +60,7 @@ import { useFeedPrefs } from "@/lib/feed-prefs";
 import { useDiscoverPrefs, setDiscoverSort } from "@/lib/discover-prefs";
 import { FeedFilter, type FeedOrderValue, type PresetValue, type ContentFilterValue } from "./home/FeedFilter";
 import { FeedsList } from "./home/FeedsList";
-import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickFrom, startingTrendingSelector, type TrendingFrom } from "./home/feed-menu";
+import { FEED_TABS, tabForFeedMode, tabTap, feedsTabLabel, feedName, filterGroups, pickFrom, startingTrendingSelector, trendingSpanSeconds, type TrendingFrom } from "./home/feed-menu";
 import { MediaGridGallery } from "./home/media-grid";
 
 import { rankDiscoverFeed } from "@/lib/discover-rank";
@@ -108,7 +111,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import type { Event } from "nostr-tools";
+import type { Event, Filter } from "nostr-tools";
 import { useNostrFeeds, type NostrCustomFeed } from "@/hooks/use-nostr-feeds";
 import { FeedIcon as FeedIconSvg, isValidFeedIconKey, type FeedIconKey } from "@/components/FeedIcons";
 
@@ -598,6 +601,10 @@ export default function Home() {
     try { sessionStorage.setItem("relay-outpost-trending-selector", sel); } catch {}
   }, []);
   const [trendingPosts, setTrendingPosts] = useState<Event[]>([]);
+  // What the people you follow reacted to: lib/circle-trending.ts ranks the posts by it.
+  const [trendingInteractions, setTrendingInteractions] = useState<Interaction[]>([]);
+  // How far back those reactions really go: a busy circle may not be covered for the whole span.
+  const [trendingCoveredSince, setTrendingCoveredSince] = useState<number | null>(null);
   /**
    * Replies whose parent no relay would serve. Posts report themselves here
    * once their own lookup SETTLES — never while it is still in flight — so the
@@ -613,7 +620,7 @@ export default function Home() {
   const handleTrendingFrom = useCallback((v: TrendingFrom) => {
     setTrendingSelector(pickFrom(v).selector);
   }, [setTrendingSelector]);
-  const trendingCacheRef = useRef<Map<string, { posts: Event[]; fetchedAt: number }>>(new Map());
+  const trendingCacheRef = useRef<Map<string, { posts: Event[]; interactions: Interaction[]; coveredSince: number; since: number; fetchedAt: number }>>(new Map());
   const followingSubRef = useRef<{ close: () => void } | null>(null);
   const liveSubRef = useRef<{ close: () => void } | null>(null);
   const repostMapRef = useRef<Map<string, { pubkey: string; timestamp: number }>>(new Map());
@@ -1453,13 +1460,14 @@ export default function Home() {
 
   const loadTrending = useCallback(async (selector: string, options?: { force?: boolean; background?: boolean }) => {
     const cacheKey = selector;
+    const myFollows = followsRef.current ?? [];
     const cached = trendingCacheRef.current.get(cacheKey);
     const now = Date.now();
     const isStale = !cached || (now - cached.fetchedAt > TRENDING_CACHE_TTL);
     const isShown = () => cacheKey === shownTrendingKeyRef.current;
 
     if (cached && !options?.force) {
-      if (isShown()) { setTrendingPosts(cached.posts); setTrendingReached(true); }
+      if (isShown()) { setTrendingPosts(cached.posts); setTrendingInteractions(cached.interactions); setTrendingCoveredSince(cached.coveredSince); setTrendingReached(true); }
       if (!isStale) return;
     }
 
@@ -1468,16 +1476,27 @@ export default function Home() {
     }
 
     try {
-      // The ranking is Primal's alone; Primal supports, it never leads
-      // (lib/trending-source.ts): when it can't answer, Trending says so.
-      const got = await overallRanking(() => fetchTrendingFeed(selector, pubkey || undefined, 40));
+      // Trending is ranked by us from the reader's own circle (owner,
+      // 2026-11-23): what the people they follow reacted to in the span, then
+      // those posts (lib/circle-trending-source.ts). No outside chart.
+      const since = Math.floor(Date.now() / 1000) - trendingSpanSeconds(selector);
+      const relays = Array.from(new Set([...feedBaseRelays(), ...getOptimalRelaysForFeed(myFollows.slice(0, 300), 6)]));
+      const got = await fetchCircleTrending({
+        follows: myFollows,
+        since,
+        relays,
+        query: (r: string[], f: Record<string, unknown>) => queryAnswered(r, f as Filter, 12_000),
+      });
+      for (const e of got.posts) eventStore.add(e);
       // Only an answer is kept: after "not reached", the next visit asks again.
-      if (got.reached) trendingCacheRef.current.set(cacheKey, { posts: got.posts, fetchedAt: Date.now() });
-      if (!isShown()) return; // kept for later; not the window on screen
-      // A background refresh that could not reach the ranking leaves the list
+      if (got.reached) trendingCacheRef.current.set(cacheKey, { posts: got.posts, interactions: got.interactions, coveredSince: got.coveredSince, since, fetchedAt: Date.now() });
+      if (!isShown()) return; // kept for later; not the span on screen
+      // A background refresh that could not reach the relays leaves the list
       // already on screen alone.
       if (!got.reached && options?.background && cached) return;
       setTrendingReached(got.reached);
+      setTrendingInteractions(got.interactions);
+      setTrendingCoveredSince(got.coveredSince);
       setTrendingPosts(got.posts);
     } catch (err) {
       console.error("Failed to fetch trending:", err);
@@ -1487,11 +1506,12 @@ export default function Home() {
   }, [pubkey]);
 
   useEffect(() => {
-    if (!widerNetworkOn) return; // the lane shows the door instead
     if (feedMode === "deep_scan") {
       const cached = trendingCacheRef.current.get(trendingSelector);
       if (cached) {
         setTrendingPosts(cached.posts);
+        setTrendingInteractions(cached.interactions);
+        setTrendingCoveredSince(cached.coveredSince);
         setTrendingReached(true);
         // Shown from memory: any spinner belonged to the chart left behind.
         setTrendingLoading(false);
@@ -2054,51 +2074,34 @@ export default function Home() {
     }
     return applyTierFilter(sortedFiltered);
   }, [feedMode, sortedFiltered, applyTierFilter, wotEnabled, wotReady, excludedTiers, flaggedPubkeys]);
-  // Trending is a GLOBAL network chart — personal tier strictness doesn't map
-  // onto it (most chart authors are unscored by your graph, so presets behave
-  // erratically: Strict guts the chart, Open does nothing). Only the flagged
-  // safety floor applies; the options sheet hides Strictness for Trending.
-  const tierFilteredTrending = useMemo(() => {
-    // Trending is the DEFAULT feed mode and it renders from its own list, which
-    // is why every earlier layer of the media work was correct and invisible:
-    // baseFilteredEvents returns [] in this mode before any of it runs. Media
-    // has to be injected here too, or it only ever appears in a mode nobody
-    // lands on.
-    //
-    // Trending is a RANKED list and these events carry no rank — they are
-    // merged newest-first, which is the only ordering they have. That is a real
-    // trade: unranked media sitting beside server-scored posts. It is capped so
-    // media supplements the ranking rather than flooding past it.
-    //
-    // THE SUPPLEMENT MUST PASS THE SAME STRANGER GATES FOR YOU APPLIES. This
-    // memo used to interleave the raw relay sample, and baseFilteredEvents
-    // returns [] in deep_scan mode — so every gate that exists for exactly
-    // this content (machine-readable, no-profile, spam) ran only on a lane
-    // the supplement never rode. Owner screenshot: a profileless bot
-    // publishing a JSON "zone_presence" heartbeat every two minutes sat at
-    // the top of Trending — splitSupplement picks NEWEST, so an every-2-min
-    // publisher owns "newest" permanently. The gates below are the For You
-    // stranger floor, applied to the UNRANKED additions only; Primal's ranked
-    // list is deliberately untouched (chart authors are mostly unscored by
-    // the viewer's graph — see the preset note above).
-    const gate = (events: Event[]) => spamFilter(events, {
-      follows: followSet,
-      followsOfFollows: fofSet,
-      reachDepth: "off",
-      allEvents: events,
-      hideMachineReadable: true,
-      hideNoProfile: true,
-      profileGetter,
-      profileSettledGetter: isProfileFetchSettled,
-      minFollowers: 0,
+  // Trending in your circle (lib/circle-trending.ts): posts by people in your
+  // circle, ranked by how many different people in it reacted. The circle is
+  // the Articles rule (lib/article-band.ts): people you follow, plus, with the
+  // wider network on, writers your network vouches for. Ranked here rather
+  // than in the loader, because follows and trust scores arrive after a list.
+  const trendingRows = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    const since = now - trendingSpanSeconds(trendingSelector);
+    const band = (pk: string) => articleBand(pk, {
+      me: pubkey,
+      isFollowed: (p) => followSet.has(p),
+      followedByFollows: (p) => fofSet.has(p),
+      trustScore: (p) => grapeRankScores?.get(p),
+      flagged: (p) => !!flaggedPubkeys?.has(p),
+      widerNetworkOn,
     });
-    //
-    // With no ranking there is nothing to add to (lib/feed-merge.ts
-    // trendingList): the newest relay posts alone are not Trending.
-    const withMedia = trendingList(trendingPosts, gate(mediaNotes), gate(supplementNotes));
-    if (!wotEnabled || !flaggedPubkeys || flaggedPubkeys.size === 0) return withMedia;
-    return withMedia.filter((e) => !flaggedPubkeys.has(e.pubkey));
-  }, [trendingPosts, mediaNotes, supplementNotes, wotEnabled, flaggedPubkeys, spamFilter, followSet, fofSet, profileGetter, profileVersion]);
+    // Mutes, reports and muted words apply as everywhere; a post older than the span is not this span's news.
+    const candidates = spamFilter(trendingPosts.filter((e) => e.created_at >= since), { follows: followSet, followsOfFollows: fofSet, reachDepth: "off" });
+    return rankCircleTrending(candidates, trendingInteractions, { me: pubkey, isFollowed: (p) => followSet.has(p), inCircle: (p) => band(p) !== null }, now);
+  }, [trendingPosts, trendingInteractions, trendingSelector, pubkey, followSet, fofSet, grapeRankScores, flaggedPubkeys, widerNetworkOn, spamFilter]);
+  const trendingReasons = useMemo(() => new Map(trendingRows.map((r) => [r.post.id, r.reason])), [trendingRows]);
+  // Honest about a span it could not cover (lib/circle-trending-source.ts).
+  const trendingCoverage = useMemo(() => {
+    if (trendingCoveredSince === null) return null;
+    const now = Math.floor(Date.now() / 1000);
+    return coverageNote(now - trendingSpanSeconds(trendingSelector), trendingCoveredSince, now);
+  }, [trendingCoveredSince, trendingSelector]);
+  const tierFilteredTrending = useMemo(() => trendingRows.map((r) => r.post), [trendingRows]);
 
   // Trending is a ranking of its own, so the
   // Posts/Replies/All content filter doesn't apply here — Trending always shows
@@ -2682,6 +2685,11 @@ export default function Home() {
     const enterClass = skipAnim ? "post-enter-skip" : "post-enter";
     return (
       <PrefetchPostWrapper key={event.id} pubkey={event.pubkey} className={`${enterClass} ${deEmphasis}`} style={!skipAnim ? { animationDelay: `${Math.min(i * 30, 300)}ms` } : undefined}>
+        {/* Trending says why each post is here: counts of reactions from your
+            circle, never a number on a person (lib/circle-trending.ts). */}
+        {feedMode === "deep_scan" && trendingReasons.get(event.id) && (
+          <p className="px-3 pb-1 text-[12px] text-muted-foreground" data-testid="trending-reason">{trendingReasons.get(event.id)}</p>
+        )}
         <PostBoundary key={event.id} id={event.id}>
           {isPollEvent(event) ? (
             <PollPost event={event} />
@@ -2796,7 +2804,7 @@ export default function Home() {
   const isCustomLoading = !!activeCustomFeed && displayedEvents.length === 0 && isInitialLoading;
 
   const currentSelector = TRENDING_SELECTORS.find((s) => s.value === trendingSelector);
-  const currentSelectorLabel = (currentSelector?.label ?? "Last hour").toLowerCase();
+  const currentSelectorLabel = (currentSelector?.label ?? "Today").toLowerCase();
 
   // The Feeds tab names the feed on screen while one of its feeds is
   // ("Photos ▾", "#naturestr ▾"); "Feeds" otherwise (home/feed-menu.ts).
@@ -3085,11 +3093,14 @@ export default function Home() {
             the tab refreshes) — Trending renders no control row under the tabs, matching
             every other feed mode. Only this transient loading feedback line
             survives (posts already on screen, a new chart on its way). */}
+        {feedMode === "deep_scan" && !trendingLoading && trendingCoverage && tierFilteredTrending.length > 0 && (
+          <p className="mb-3 px-1 text-[13px] text-muted-foreground" data-testid="text-trending-coverage">{trendingCoverage}</p>
+        )}
         {feedMode === "deep_scan" && trendingLoading && trendingPosts.length > 0 && (
           <div className="mb-3">
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5" data-testid="text-trending-loading">
               <RelayOutpostInlineLoader className="text-foreground/50" />
-              Loading the {currentSelectorLabel}...
+              Loading {currentSelectorLabel}...
             </p>
           </div>
         )}
@@ -3293,22 +3304,24 @@ export default function Home() {
           >
             <RadarSweepIllustration className="text-foreground mb-3" />
             {trendingReached ? (<>
-              <p className="text-sm font-medium mb-1" data-testid="text-trending-quiet">Nothing is trending right now</p>
+              <p className="text-sm font-medium mb-1" data-testid="text-trending-quiet">Nothing is trending in your circle yet</p>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Try the other time range in the filter, or check back later.
+                {(follows?.length ?? 0) === 0
+                  ? "Follow a few people, and what they react to shows up here."
+                  : "A post shows here when two or more people you follow react to it. Try the other time span in the filter, or check back later."}
               </p>
             </>) : (<>
-              {/* Never reached is not the same as nothing there (lib/trending-source.ts). */}
+              {/* Never reached is not the same as nothing there (RELAY_REACHABILITY.md). */}
               <p className="text-sm font-medium mb-1" data-testid="text-trending-unreachable">Trending can't be reached right now</p>
               <p className="text-xs text-muted-foreground max-w-xs mb-3">
-                Its ranking comes from an outside service that isn't answering. Your other feeds are not affected.
+                Your relays aren't answering. Your other feeds are not affected.
               </p>
               <button
-                onClick={() => setFeedMode("raw_signal")}
+                onClick={() => setFeedMode("open_comms")}
                 className="min-h-11 px-3 text-[13px] font-medium text-brand hover:text-brand-strong transition-colors"
-                data-testid="button-trending-go-for-you"
+                data-testid="button-trending-go-following"
               >
-                Go to For you
+                Go to Following
               </button>
             </>)}
           </div>
