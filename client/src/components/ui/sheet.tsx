@@ -6,6 +6,8 @@ import { withBackClose } from "@/hooks/use-back-closable"
 import { cva, type VariantProps } from "class-variance-authority"
 import { OVERLAY_CLOSE_BUTTON, OverlayCloseChip } from "@/components/ui/overlay-close"
 import { ignoreToastInteraction } from "@/components/ui/toast"
+import { OttoMark } from "@/components/OttoMark"
+import { footerMarkRect, holdMarkForSheet } from "@/lib/mark-sheet"
 
 import { cn } from "@/lib/utils"
 
@@ -57,6 +59,10 @@ const sheetVariants = cva(
   }
 )
 
+/** A bottom sheet that grows out of the mark instead of sliding up (index.css .sheet-from-mark). */
+const MARK_SHEET =
+  "sheet-from-mark fixed z-50 gap-4 bg-background p-6 shadow-lg inset-x-0 bottom-0 border-t pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {
@@ -70,12 +76,19 @@ interface SheetContentProps
    * disturbing every other sheet in the app.
    */
   overlayClassName?: string
+  /**
+   * A bottom sheet that opens out of the Relay mark (owner, 2026-11-23): it
+   * grows from where the footer's mark sits, and the mark becomes its close
+   * control, top right. Only takes effect where that mark is on screen (a
+   * phone with the pill menu); elsewhere the sheet slides up with its usual X.
+   */
+  fromMark?: boolean
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, style, overlayClassName, onPointerDownOutside, onInteractOutside, ...props }, ref) => {
+>(({ side = "right", className, children, style, overlayClassName, fromMark, onPointerDownOutside, onInteractOutside, ...props }, ref) => {
   // iOS standalone-PWA compositing fix for bottom sheets.
   //
   // On display-mode:standalone WebKit, a portaled `position: fixed`,
@@ -95,17 +108,40 @@ const SheetContent = React.forwardRef<
   // Scoped to `side="bottom"` (the affected surface: Saved/Feed options,
   // Communities, Search, Calendar); edge/side drawers manage their own fill.
   const isBottom = side === "bottom"
+  // Read once, as the sheet mounts: where the footer's mark is. Null means it
+  // is not on screen, and the sheet behaves as any other.
+  const [markRect] = React.useState(() => (fromMark && isBottom ? footerMarkRect() : null))
+  const opensFromMark = !!markRect
+  // The element arrives a commit after this component mounts (the portal
+  // renders its children on its second pass), so it is held in state: the
+  // measuring below runs when it is really there.
+  const [el, setEl] = React.useState<HTMLDivElement | null>(null)
+  const setRefs = React.useCallback((node: HTMLDivElement | null) => {
+    setEl(node)
+    if (typeof ref === "function") ref(node)
+    else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+  }, [ref])
+  React.useLayoutEffect(() => {
+    if (!markRect || !el) return
+    // The sheet is docked to the bottom edge, so its top is known from its
+    // height even while the opening animation is scaling it.
+    const top = window.innerHeight - el.offsetHeight
+    el.style.setProperty("--mark-ox", `${Math.round(markRect.left + markRect.width / 2)}px`)
+    el.style.setProperty("--mark-oy", `${Math.round(markRect.top + markRect.height / 2 - top)}px`)
+    return holdMarkForSheet()
+  }, [markRect, el])
   return (
     <SheetPortal>
       <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
-        ref={ref}
-        className={cn(sheetVariants({ side }), isBottom && "isolate", className)}
+        ref={setRefs}
+        className={cn(opensFromMark ? MARK_SHEET : sheetVariants({ side }), isBottom && "isolate", className)}
         style={
           isBottom
             ? {
                 backgroundColor: "hsl(var(--background))",
                 transform: "translateZ(0)",
+                ...(opensFromMark ? { transformOrigin: "var(--mark-ox, 50%) var(--mark-oy, 100%)" } : null),
                 ...style,
               }
             : style
@@ -116,8 +152,15 @@ const SheetContent = React.forwardRef<
         onInteractOutside={ignoreToastInteraction(onInteractOutside)}
       >
         {children}
-        <SheetPrimitive.Close className={OVERLAY_CLOSE_BUTTON}>
-          <OverlayCloseChip />
+        <SheetPrimitive.Close className={cn(OVERLAY_CLOSE_BUTTON, opensFromMark && "sheet-mark-close")} data-testid={opensFromMark ? "sheet-mark-close" : undefined}>
+          {opensFromMark ? (
+            // The mark itself, arrived from the corner: tapping it sends the sheet back.
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background shadow-[0_8px_18px_-10px_rgba(13,15,18,0.5)]">
+              <OttoMark size={28} className="!size-7" role="post" />
+            </span>
+          ) : (
+            <OverlayCloseChip />
+          )}
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>

@@ -2,6 +2,7 @@ import { OttoMark } from "@/components/OttoMark";
 import { useState, useEffect, useRef, memo } from "react";
 import { useTyping } from "@/lib/typing-focus";
 import { useChromeHeldOpen, holdChromeOpen, releaseChrome } from "@/lib/chrome-held-open";
+import { useMarkInSheet } from "@/lib/mark-sheet";
 import { tabTap } from "@/lib/footer-nav";
 import { scrollPageToTop, isPageAtTop } from "@/lib/scroll-root";
 import { emitTabRetap } from "@/lib/tab-retap";
@@ -197,6 +198,9 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
   // back (owner, 2026-11-23). A tap on the folded mark re-forms the menu
   // without scrolling; scrolling further down folds it again.
   const steppedAside = dmThreadOpen || typing;
+  // A sheet that opened out of the mark carries the mark as its close control
+  // (lib/mark-sheet.ts): this one is not shown meanwhile.
+  const markInSheet = useMarkInSheet();
   const iaCollapsed = useIaCollapsed();
   const heldOpen = useChromeHeldOpen();
   useEffect(() => { if (!hidden) releaseChrome(); }, [hidden]);
@@ -325,7 +329,7 @@ export const MobileFooter = memo(function MobileFooter({ hidden = false }: { hid
           type="button"
           aria-label={folded ? "Show menu" : composeLabel}
           onClick={folded ? holdChromeOpen : compose}
-          className={`mobile-nav-mark fixed right-5 z-50 md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"}`}
+          className={`mobile-nav-mark fixed right-5 z-50 md:hidden flex h-[58px] w-[58px] items-center justify-center rounded-full bg-foreground text-background shadow-[0_16px_30px_-12px_rgba(13,15,18,0.5)] ${slidAway ? "translate-y-full opacity-0 pointer-events-none" : "opacity-100"} ${markInSheet ? "invisible" : ""}`}
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" }}
           data-folded={folded || undefined}
           data-testid="mobile-nav-create"
