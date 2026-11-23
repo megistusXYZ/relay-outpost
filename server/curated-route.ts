@@ -1,5 +1,5 @@
 /**
- * GET /api/curated: the curated lists the app suggests (starter communities,
+ * GET /api/curated: the curated lists the app suggests (featured communities,
  * suggested news feeds), from shared/curated-lists.ts. A fix to a list
  * reaches every user at deploy, an installed app on an older build included.
  */

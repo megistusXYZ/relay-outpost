@@ -11,7 +11,6 @@ import { CURATED_LISTS, parseCuratedLists, isStarterCommunity, isCuratedFeed, is
 
 describe("the shipped curated lists", () => {
   it("every entry passes the same check the app applies (nothing silently dropped)", () => {
-    expect(CURATED_LISTS.starterCommunities.length).toBeGreaterThan(0);
     expect(CURATED_LISTS.suggestedFeeds.length).toBeGreaterThan(0);
     expect(CURATED_LISTS.starterCommunities.filter((c) => !isStarterCommunity(c))).toEqual([]);
     expect(CURATED_LISTS.suggestedFeeds.filter((f) => !isCuratedFeed(f))).toEqual([]);
@@ -26,6 +25,14 @@ describe("the shipped curated lists", () => {
       expect(shows.filter((x) => !isPresetShow(x)), key).toEqual([]);
       expect(CURATED_LISTS.podcastPills.some((p) => p.key === key), `${key} has a pill`).toBe(true);
     }
+  });
+
+  // Owner, 2026-11-22: the Communities hub advertises no community of its own.
+  // The list may later hold a community we agree to feature; it never holds
+  // another app's home relay.
+  it("the featured communities never include another app's home relay", () => {
+    const hosts = CURATED_LISTS.starterCommunities.map((c) => new URL(c.url).hostname);
+    expect(hosts.filter((h) => /(^|\.)(ditto\.pub|primal\.net)$/.test(h))).toEqual([]);
   });
 
   it("no address appears twice in a list", () => {
