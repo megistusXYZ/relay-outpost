@@ -242,7 +242,7 @@ export function FeedsList({
           can fail to paint the background of a scrollable element inside the
           transformed, fixed slide-up sheet (seen on-device with the old tall
           Saved sheet). */}
-      <SheetContent side="bottom" fromMark className="rounded-t-2xl p-0 overflow-hidden" data-testid="feeds-list">
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 overflow-hidden" data-testid="feeds-list">
         <div className="max-h-[85vh] overflow-y-auto p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           <SheetTitle className={PANEL_TITLE}>Feeds</SheetTitle>
           {body}
