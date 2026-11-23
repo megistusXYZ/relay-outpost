@@ -354,10 +354,12 @@ export default function Search() {
             kind of result is the wider network and stands behind its door
             while that is off (owner, 2026-10-10; lib/network-mode.ts). */}
         {activeTab === "people" && <PeopleTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {activeTab !== "people" && !searchWiderNetworkOn && <div className="pt-2"><WiderNetworkDoor testId="wider-network-door-search" /></div>}
+        {/* Articles is the exception: it opens on people you follow and
+            carries its own door for the wider band (owner, 2026-11-23). */}
+        {activeTab !== "people" && !searchWiderNetworkOn && !(activeTab === "media" && mediaType === "articles") && <div className="pt-2"><WiderNetworkDoor testId="wider-network-door-search" /></div>}
         {searchWiderNetworkOn && activeTab === "posts" && <PostsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
         {searchWiderNetworkOn && activeTab === "hashtags" && <HashtagsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
-        {searchWiderNetworkOn && activeTab === "media" && <MediaTab mediaType={mediaType} urlQuery={urlQuery} updateUrl={updateUrl} />}
+        {(searchWiderNetworkOn || mediaType === "articles") && activeTab === "media" && <MediaTab mediaType={mediaType} urlQuery={urlQuery} updateUrl={updateUrl} />}
         {searchWiderNetworkOn && activeTab === "live" && <LiveTab urlQuery={urlQuery} updateUrl={updateUrl} />}
         {searchWiderNetworkOn && activeTab === "events" && <EventsTab urlQuery={urlQuery} updateUrl={updateUrl} />}
         {activeTab === "vouches" && <VouchesTab urlQuery={urlQuery} updateUrl={updateUrl} />}
