@@ -2552,6 +2552,9 @@ export default function Profile() {
               <ProfileBadgesSection badges={nip58Badges} pubkey={pubkey} onRefresh={refreshNip58Badges} />
             </ErrorBoundary>
           ) : undefined}
+          // On your own profile, a badge you have not accepted yet is waiting
+          // under About on a phone: the chip says so.
+          badgesWaiting={!!isOwnProfile && nip58Badges.some((b) => !b.isAccepted)}
           // The counts under the name are the way into the network list, on
           // every width. The rail's "Connections" button showed the same two
           // numbers a second time, so it is gone.

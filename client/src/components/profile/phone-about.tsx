@@ -13,6 +13,8 @@ export interface PhoneAbout {
   sections: ReactNode;
   /** False when the person has none of them: the chip then needs another reason to exist. */
   hasSections: boolean;
+  /** Something under About is waiting for the viewer (a badge to accept, on their own profile). */
+  attention: boolean;
 }
 
 export const PhoneAboutContext = createContext<PhoneAbout | null>(null);

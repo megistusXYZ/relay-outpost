@@ -373,6 +373,10 @@ export function IdentityProfileMain({
               data-testid={`identity-filter-${f.key}`}
             >
               {f.label}
+              {/* Something under About is waiting for you (a badge to accept). */}
+              {f.key === "about" && about?.attention && filter !== "about" && (
+                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand align-middle" data-testid="about-chip-dot" aria-label="Something is waiting for you" />
+              )}
             </button>
           );
         })}
