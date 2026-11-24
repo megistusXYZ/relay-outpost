@@ -4,6 +4,7 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 import { withBackClose } from "@/hooks/use-back-closable"
 import { ignoreToastInteraction } from "@/components/ui/toast"
+import { OttoMark } from "@/components/OttoMark"
 
 import { cn } from "@/lib/utils"
 
@@ -57,8 +58,20 @@ const DrawerContent = React.forwardRef<
       onPointerDownOutside={ignoreToastInteraction(onPointerDownOutside)}
       onInteractOutside={ignoreToastInteraction(onInteractOutside)}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" data-drawer-handle />
       {children}
+      {/* The Relay mark closes a drawer, as it closes a sheet (owner,
+          2026-11-23, "Keep the drag, add the mark"). The drawer still slides
+          up and drags down; only the close control is shared. */}
+      <DrawerPrimitive.Close
+        className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="drawer-mark-close"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background">
+          <OttoMark size={24} className="!size-6" role="post" />
+        </span>
+        <span className="sr-only">Close</span>
+      </DrawerPrimitive.Close>
     </DrawerPrimitive.Content>
   </DrawerPortal>
 ))
