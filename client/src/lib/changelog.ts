@@ -40,6 +40,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.23.0",
+    date: "2026-11-24",
+    title: "Your people first",
+    changes: [
+      { type: "new", text: "Articles opens on people you follow, then writers your circle vouches for. No strangers." },
+      { type: "new", text: "Trending on Home is ranked from your circle: posts the people you follow are reacting to." },
+      { type: "new", text: "The phone menu folds into the Relay mark as you scroll. Tap the mark to bring it back." },
+      { type: "improved", text: "Profiles open on posts. Bio details, circle and badges are under About." },
+      { type: "improved", text: "Tidier on phones: compact event rows, New chat in the top bar, and leaving a community updates right away." },
+    ],
+  },
+  {
     version: "1.22.0",
     date: "2026-11-19",
     title: "A calmer look, plainer words",
