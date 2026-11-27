@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNostrAuth, type QRLoginState, isPWAStandalone, isIOSDevice } from "@/contexts/NostrAuthContext";
+import { useNostrAuth, type QRLoginState, isIOSHomeScreenApp, isIOSDevice } from "@/contexts/NostrAuthContext";
 import { ErrorBoundary, OnboardingErrorFallback } from "@/components/ErrorBoundary";
 import { RelayOutpostInlineLoader } from "@/components/RelayOutpostLoader";
 import { Unplug, ArrowLeft, Lock, Fingerprint, QrCode, Copy, Check, RefreshCw, Smartphone, ExternalLink, UserPlus, KeyRound, Radio, Plug, ChevronRight } from "lucide-react";
@@ -418,15 +418,16 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
   }, [mode]);
 
   const [bunkerError, setBunkerError] = useState("");
-  const isPWA = useMemo(() => isPWAStandalone(), []);
+  // The iPhone home-screen app: the one place a browser extension cannot run.
+  const noExtensionsHere = useMemo(() => isIOSHomeScreenApp(), []);
   const isIOS = useMemo(() => isIOSDevice(), []);
   const isAndroid = useMemo(() => isAndroidDevice(), []);
   const isMobile = useMemo(() => isMobileDevice(), []);
-  // Mobile devices (and any iOS PWA, where extensions don't exist) lead with
+  // Mobile devices (the iPhone home-screen app included) lead with
   // the Remote Signer card. Desktop browsers lead with Browser Extension.
   // The recommendation only changes the order and adds a small badge — every
   // option remains visible and accessible below.
-  const recommended: "extension" | "qr" = (isPWA && isIOS) || isMobile ? "qr" : "extension";
+  const recommended: "extension" | "qr" = noExtensionsHere || isMobile ? "qr" : "extension";
   const recommendedLabel = isIOS
     ? "Recommended for iPhone"
     : isAndroid
@@ -627,10 +628,10 @@ export function LoginOptions({ onBack }: LoginOptionsProps) {
                 key: "extension",
                 icon: Fingerprint,
                 title: "Browser extension",
-                caption: isPWA ? "Not available in app mode" : "Alby, nos2x, or Nostash",
+                caption: noExtensionsHere ? "Not available in the home-screen app" : "Alby, nos2x, or Nostash",
                 onClick: handleExtensionLogin,
-                disabled: isLoggingIn || isPWA,
-                order: recommended === "extension" && !isPWA ? 1 : 2,
+                disabled: isLoggingIn || noExtensionsHere,
+                order: recommended === "extension" ? 1 : 2,
                 testId: "button-login-extension",
               },
               {
