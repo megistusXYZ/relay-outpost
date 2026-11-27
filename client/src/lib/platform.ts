@@ -108,3 +108,14 @@ export function isPWAStandalone(signals?: StandaloneSignals): boolean {
   const s = signals ?? readStandaloneSignals();
   return s.displayModeStandalone || s.navigatorStandalone;
 }
+
+/**
+ * The iPhone or iPad home-screen app. The one installed app that is NOT the
+ * browser tab in a frame of its own: it keeps its own storage, apart from
+ * Safari, and Safari's extensions do not run in it. Everywhere else (a
+ * desktop or Android installed app) the app shares the browser's storage and
+ * extensions, so it must behave exactly as the tab does.
+ */
+export function isIOSHomeScreenApp(signals?: StandaloneSignals, n?: NavigatorLike): boolean {
+  return isPWAStandalone(signals) && isIOSDevice(n);
+}

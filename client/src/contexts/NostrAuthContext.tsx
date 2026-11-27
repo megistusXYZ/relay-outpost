@@ -56,10 +56,10 @@ NostrConnectSigner.publishMethod = (relays, event) => {
 };
 
 // Device checks live in lib/platform.ts; re-exported here for older imports.
-import { isPWAStandalone, isIOSDevice } from "@/lib/platform";
+import { isPWAStandalone, isIOSDevice, isIOSHomeScreenApp } from "@/lib/platform";
 import { markAppSignedIn } from "@/lib/app-launch";
 import { PROFILE_DIRECTORIES } from "@shared/profile-directories";
-export { isPWAStandalone, isIOSDevice };
+export { isPWAStandalone, isIOSDevice, isIOSHomeScreenApp };
 
 interface ProfileData {
   name?: string;
@@ -439,8 +439,10 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithExtension = useCallback(async (reconnect = false) => {
     if (!window.nostr) {
-      // Not an error: extensions simply don't run here. Point at what does.
-      if (isPWAStandalone()) {
+      // Not an error: Safari's extensions simply don't run in the home-screen
+      // app. Point at what does. A desktop installed app is the browser in its
+      // own window: an extension can be there, so it takes the tab's path.
+      if (isIOSHomeScreenApp()) {
         if (!reconnect) {
           toast({
             title: "Extensions don't run in the app",
@@ -798,8 +800,11 @@ export function NostrAuthProvider({ children }: { children: ReactNode }) {
     };
 
     if (savedMethod === "extension") {
-      if (isPWAStandalone()) {
-        console.warn("Extension login saved but unavailable in PWA standalone mode");
+      // Only the iPhone home-screen app can never have the extension. A
+      // desktop installed app shares the tab's storage AND its extensions:
+      // clearing here signed people out of both the app and the tab.
+      if (isIOSHomeScreenApp()) {
+        console.warn("Extension login saved but unavailable in the home-screen app");
         clearSavedSession();
         return;
       }

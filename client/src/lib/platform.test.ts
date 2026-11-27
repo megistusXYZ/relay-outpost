@@ -5,7 +5,7 @@
  * installing and signing in don't work the way they do in a real browser.
  */
 import { describe, it, expect } from "vitest";
-import { isIOSDevice, isIPadDevice, isAndroidDevice, isMacSafari, inAppBrowserOf, isPWAStandalone } from "./platform";
+import { isIOSDevice, isIPadDevice, isAndroidDevice, isMacSafari, inAppBrowserOf, isPWAStandalone, isIOSHomeScreenApp } from "./platform";
 
 const UA = {
   iphoneSafari: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1",
@@ -94,5 +94,22 @@ describe("isPWAStandalone", () => {
     expect(isPWAStandalone({ displayModeStandalone: true, navigatorStandalone: false })).toBe(true);
     expect(isPWAStandalone({ displayModeStandalone: false, navigatorStandalone: true })).toBe(true);
     expect(isPWAStandalone({ displayModeStandalone: false, navigatorStandalone: false })).toBe(false);
+  });
+});
+
+describe("isIOSHomeScreenApp", () => {
+  const app = { displayModeStandalone: true, navigatorStandalone: false };
+  const tab = { displayModeStandalone: false, navigatorStandalone: false };
+  const iphone = { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1", platform: "iPhone", maxTouchPoints: 5 };
+  const mac = { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36", platform: "MacIntel", maxTouchPoints: 0 };
+  const android = { userAgent: "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36", platform: "Linux armv81", maxTouchPoints: 5 };
+  it("only the installed app on an iPhone or iPad", () => {
+    expect(isIOSHomeScreenApp(app, iphone)).toBe(true);
+    expect(isIOSHomeScreenApp({ displayModeStandalone: false, navigatorStandalone: true }, iphone)).toBe(true);
+  });
+  it("not Safari's own tab, and not a desktop or Android installed app: those are the browser", () => {
+    expect(isIOSHomeScreenApp(tab, iphone)).toBe(false);
+    expect(isIOSHomeScreenApp(app, mac)).toBe(false);
+    expect(isIOSHomeScreenApp(app, android)).toBe(false);
   });
 });
