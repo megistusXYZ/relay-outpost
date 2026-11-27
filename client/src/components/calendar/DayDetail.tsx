@@ -45,7 +45,7 @@ function CollapsibleSection({
             {label}
           </span>
         </span>
-        <span className={`text-[10px] ${colorClass} opacity-60`}>({count})</span>
+        <span className={`text-xs ${colorClass} opacity-60`}>({count})</span>
       </button>
       {open && <div className="space-y-2">{children}</div>}
     </div>
@@ -136,7 +136,7 @@ export function DayDetail({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300"
             onClick={onClose}
             data-testid="button-close-day-detail"
           >
@@ -187,7 +187,7 @@ export function DayDetail({
                 icon={<Clock className="w-3 h-3 text-muted-foreground" />}
                 label="Scheduled"
                 count={scheduledItems.length}
-                colorClass="text-foreground/80"
+                colorClass="text-foreground"
               >
                 {scheduledItems.map((item) => (
                   <ScheduledPostCard
@@ -248,7 +248,7 @@ export function DayDetail({
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-sky-500 dark:hover:text-sky-400"
                                   onClick={() => onEditEvent(ce)}
                                   title="Edit event"
                                 >
@@ -259,7 +259,7 @@ export function DayDetail({
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
                                   onClick={() => onDeleteEvent(ce)}
                                   title="Delete event"
                                 >
@@ -271,7 +271,7 @@ export function DayDetail({
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
                               onClick={() => onUnpinEvent(ce.id)}
                               title="Unpin"
                             >
@@ -304,7 +304,7 @@ export function DayDetail({
                 icon={<Radio className="w-3 h-3 text-muted-foreground" />}
                 label="Creator Streams"
                 count={creatorStreamItems.length}
-                colorClass="text-foreground/80"
+                colorClass="text-foreground"
               >
                 {creatorStreamItems.map((item) => (
                   <CreatorStreamCard key={item.id} item={item} />

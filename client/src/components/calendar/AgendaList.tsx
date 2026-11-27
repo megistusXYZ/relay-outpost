@@ -50,7 +50,7 @@ export function EventRowActions({
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-sky-500 dark:hover:text-sky-400"
             onClick={() => onEditEvent(ce)}
             title="Edit event"
           >
@@ -59,7 +59,7 @@ export function EventRowActions({
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
             onClick={() => onDeleteEvent(ce)}
             title="Delete event"
           >
@@ -70,7 +70,7 @@ export function EventRowActions({
         <Button
           size="sm"
           variant="ghost"
-          className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400"
           onClick={() => onUnpinEvent(ce.id)}
           title="Unpin"
         >
@@ -171,12 +171,12 @@ export function AgendaList({
               >
                 {primary}
               </h3>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">{secondary}</span>
+              <span className="text-xs text-muted-foreground">{secondary}</span>
               {isSelected && onClearSelection && (
                 <button
                   type="button"
                   onClick={onClearSelection}
-                  className="ml-auto text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 -m-1"
+                  className="ml-auto text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300 p-1 -m-1"
                   aria-label="Clear day selection"
                   data-testid="button-clear-day-selection"
                 >
@@ -194,7 +194,7 @@ export function AgendaList({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-3 text-[11px] rounded-full border-foreground/25 text-foreground hover:bg-foreground/[0.06]"
+                    className="h-7 px-3 text-xs rounded-full border-foreground/25 text-foreground hover:bg-foreground/[0.06]"
                     onClick={() => openScheduleForDay(day.date)}
                     data-testid="button-schedule-empty-day"
                   >

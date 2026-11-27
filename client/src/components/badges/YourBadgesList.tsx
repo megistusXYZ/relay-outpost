@@ -94,7 +94,7 @@ export function YourBadgesList({ refreshKey, onEdit, onCreate, onThank, communit
               </div>
               {!readOnly && <div className="flex gap-2">
                 <Button variant="outline" className="min-h-[44px]" onClick={() => onEdit(d)} data-testid={`button-edit-badge-${d.dTag}`}>Edit</Button>
-                <Button variant="ghost" className="min-h-[44px] text-destructive" onClick={() => setDeleting(d)} data-testid={`button-delete-badge-${d.dTag}`}>Delete</Button>
+                <Button variant="ghost" className="min-h-[44px] text-danger" onClick={() => setDeleting(d)} data-testid={`button-delete-badge-${d.dTag}`}>Delete</Button>
               </div>}
             </li>
           ))}

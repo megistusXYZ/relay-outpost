@@ -781,7 +781,7 @@ export default function ContentCalendar() {
             <Send className="w-3.5 h-3.5" />
             Schedule
             {(pendingCount > 0 || failedCount > 0) && (
-              <span className={`absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-semibold leading-4 text-white text-center ${failedCount > 0 ? "bg-red-500" : "bg-emerald-500"}`}>
+              <span className={`absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-xs font-semibold leading-4 text-white text-center ${failedCount > 0 ? "bg-red-500" : "bg-emerald-500"}`}>
                 {failedCount > 0 ? failedCount : pendingCount}
               </span>
             )}
@@ -851,7 +851,7 @@ export default function ContentCalendar() {
                       className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-[12px] transition-colors hover:bg-muted/50 active:bg-muted touch-manipulation"
                     >
                       <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${active ? f.dot : "bg-gray-300 dark:bg-gray-700"}`} />
-                      <span className={active ? "text-foreground" : "text-muted-foreground/60"}>{f.label}</span>
+                      <span className={active ? "text-foreground" : "text-muted-foreground"}>{f.label}</span>
                       {active && <Check className="w-3.5 h-3.5 ml-auto text-foreground" />}
                     </button>
                   );
@@ -869,7 +869,7 @@ export default function ContentCalendar() {
           </Popover>
         </div>
 
-        <div className="hidden sm:flex sm:items-center sm:gap-3">
+        <div className="hidden sm:flex sm:items-center sm:gap-3 sm:shrink-0 sm:whitespace-nowrap">
           <button
             className="glass-tab-exempt text-[13px] font-medium text-brand hover:text-brand-strong transition-colors flex items-center gap-1"
             onClick={() => window.dispatchEvent(new CustomEvent("open-compose-schedule"))}
@@ -878,12 +878,12 @@ export default function ContentCalendar() {
             <Send className="w-3 h-3" />
             Schedule post
             {pendingCount > 0 && (
-              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-foreground text-background text-[11px] font-semibold leading-4 text-center">
+              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-foreground text-background text-xs font-semibold leading-4 text-center">
                 {pendingCount}
               </span>
             )}
             {failedCount > 0 && (
-              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 text-[9px] font-semibold leading-4 text-center" title={`${failedCount} failed`}>
+              <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 text-xs font-semibold leading-4 text-center" title={`${failedCount} failed`}>
                 {failedCount}!
               </span>
             )}
@@ -917,7 +917,7 @@ export default function ContentCalendar() {
               <button
                 key={f.key}
                 onClick={() => toggleFilter(f.key)}
-                className={`glass-tab-exempt flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] transition-all select-none ${
+                className={`glass-tab-exempt flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-all select-none ${
                   active
                     ? "text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-white/10"
                     : "text-gray-400 dark:text-gray-600 opacity-50"
@@ -982,7 +982,7 @@ export default function ContentCalendar() {
         </div>
       ) : emptyState === "unreachable" ? (
         <div className="text-center py-12 px-4" data-testid="calendar-unreachable">
-          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground/70" />
+          <OttoEmpty mood="looking" size={88} className="mx-auto mb-3 text-foreground" />
           <p className="text-base font-medium text-foreground mb-1">Couldn't reach your relays</p>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
             Your posts and events are still there — we just couldn't ask for them right now.
@@ -998,7 +998,7 @@ export default function ContentCalendar() {
       ) : emptyState === "empty" ? (
         !pinsStillLoading && (
           <div className="text-center py-12 px-4" data-testid="calendar-empty-state">
-            <OttoEmpty mood="quiet" size={88} className="mx-auto mb-3 text-foreground/70" />
+            <OttoEmpty mood="quiet" size={88} className="mx-auto mb-3 text-foreground" />
             <p className="text-base font-medium text-foreground mb-1">Your week, in one place</p>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
               Posts you plan, events you're going to and holidays all show up here. Nothing yet.
@@ -1047,7 +1047,7 @@ export default function ContentCalendar() {
         </div>
       )}
       {pinsFailedToLoad && (
-        <p className="text-xs text-muted-foreground/70 py-1.5">
+        <p className="text-xs text-muted-foreground py-1.5">
           Your pinned events couldn't be loaded from relays right now.
         </p>
       )}
@@ -1061,8 +1061,8 @@ export default function ContentCalendar() {
             className="flex items-center gap-1.5 w-full text-left py-2 px-1 rounded-md hover:bg-muted/30 transition-colors"
             data-testid="button-toggle-past-events"
           >
-            <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground/60 transition-transform ${showPast ? "rotate-90" : ""}`} />
-            <span className="text-[13px] font-medium text-muted-foreground/70">Past</span>
+            <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${showPast ? "rotate-90" : ""}`} />
+            <span className="text-[13px] font-medium text-muted-foreground">Past</span>
             <span className="text-[12px] text-muted-foreground">({pastPinnedEvents.length})</span>
           </button>
           {showPast && (

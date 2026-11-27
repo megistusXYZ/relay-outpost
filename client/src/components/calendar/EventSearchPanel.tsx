@@ -309,8 +309,8 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
       >
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground/90 mb-1 leading-snug">{ce.title}</p>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-[11px] sm:text-[12px] text-muted-foreground mb-1.5">
+            <p className="text-sm font-medium text-foreground mb-1 leading-snug">{ce.title}</p>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2 text-xs sm:text-[12px] text-muted-foreground mb-1.5">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3 shrink-0" />
                 {formatEventDate(ce)}
@@ -323,7 +323,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               )}
             </div>
             {ce.description && (
-              <p className="text-xs text-foreground/60 line-clamp-2 mb-1.5 leading-relaxed">
+              <p className="text-xs text-foreground line-clamp-2 mb-1.5 leading-relaxed">
                 <Linkify text={ce.description.slice(0, 150)} />
               </p>
             )}
@@ -334,7 +334,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
-                  "inline-flex items-center gap-1.5 mb-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 mb-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
                   meeting.kind === "stream"
                     ? "bg-rose-500/15 text-rose-400 hover:bg-rose-500/25"
                     : "bg-sky-500/15 text-sky-400 hover:bg-sky-500/25"
@@ -374,7 +374,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
             variant="ghost"
             className={cn(
               "h-9 w-9 sm:h-8 sm:w-8 p-0 flex-shrink-0 touch-manipulation",
-              isPinned ? "text-sky-400 hover:text-red-700 dark:hover:text-red-400" : "text-muted-foreground/40 hover:text-sky-400"
+              isPinned ? "text-sky-400 hover:text-red-700 dark:hover:text-red-400" : "text-muted-foreground hover:text-sky-400"
             )}
             onClick={() => handleTogglePin(ce)}
             title={isPinned ? "Unpin" : "Pin to calendar"}
@@ -403,7 +403,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               <Calendar className="w-4 h-4 text-sky-400" />
               Discover events
             </SheetTitle>
-            <SheetDescription className="text-xs text-muted-foreground/50">
+            <SheetDescription className="text-xs text-muted-foreground">
               Browse upcoming Nostr events, search by topic, or look up a creator by name.
             </SheetDescription>
           </SheetHeader>
@@ -418,12 +418,12 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] text-sky-400/70 font-medium">Events by</div>
-                <div className="text-xs font-medium text-foreground/90 truncate">{authorFilter.name}</div>
+                <div className="text-xs font-medium text-foreground truncate">{authorFilter.name}</div>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-muted-foreground/60 hover:text-foreground"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 onClick={clearAuthorFilter}
                 title="Clear creator filter"
                 data-testid="button-clear-author-filter"
@@ -488,7 +488,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium text-foreground/90 truncate">{name}</div>
+                          <div className="text-xs font-medium text-foreground truncate">{name}</div>
                           {nip05 && (
                             <div className="text-[12px] text-muted-foreground truncate">{nip05}</div>
                           )}
@@ -508,7 +508,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
             <Button
               size="sm"
               variant={searchMode === "all" ? "default" : "ghost"}
-              className="h-7 sm:h-6 text-xs sm:text-[10px] px-3 sm:px-2"
+              className="h-7 sm:h-6 text-xs px-3 sm:px-2"
               onClick={() => setSearchMode("all")}
             >
               All Relays
@@ -517,7 +517,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
               <Button
                 size="sm"
                 variant={searchMode === "following" ? "default" : "ghost"}
-                className="h-7 sm:h-6 text-xs sm:text-[10px] px-3 sm:px-2"
+                className="h-7 sm:h-6 text-xs px-3 sm:px-2"
                 onClick={() => setSearchMode("following")}
               >
                 <Users className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1" />
@@ -539,8 +539,8 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
 
           {!loading && searched && results.length === 0 && (
             <div className="text-center py-8">
-              <OttoEmpty mood="looking" size={72} className="mx-auto mb-2 text-foreground/70" />
-              <p className="text-xs text-muted-foreground/40">No events found</p>
+              <OttoEmpty mood="looking" size={72} className="mx-auto mb-2 text-foreground" />
+              <p className="text-xs text-muted-foreground">No events found</p>
               <p className="text-[12px] text-muted-foreground mt-1">
                 Try different keywords or search all relays
               </p>
@@ -559,7 +559,7 @@ export function EventSearchPanel({ open, onOpenChange, followedPubkeys, onPinCha
                     className="flex items-center gap-1.5 w-full text-left py-2 sm:py-1.5 px-2 rounded-md hover:bg-muted/30 active:bg-muted/40 transition-colors group"
                     onClick={() => setShowPast(!showPast)}
                   >
-                    <ChevronRight className={`w-3.5 h-3.5 sm:w-3 sm:h-3 text-muted-foreground/40 transition-transform ${showPast ? "rotate-90" : ""}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 sm:w-3 sm:h-3 text-muted-foreground transition-transform ${showPast ? "rotate-90" : ""}`} />
                     <span className="text-xs sm:text-[13px] font-medium text-muted-foreground">
                       Past
                     </span>
