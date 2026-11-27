@@ -122,14 +122,14 @@ export function ShareReminderDialog({ open, onOpenChange, holiday, selectedDay }
               {holiday.emoji && <span className="mr-1.5">{holiday.emoji}</span>}
               {holiday.name}
             </p>
-            <p className="text-[10px] text-amber-600/70 dark:text-amber-400/60 mt-0.5">
+            <p className="text-xs text-amber-600/70 dark:text-amber-400/60 mt-0.5">
               {MONTH_NAMES[selectedDay.getMonth()]} {selectedDay.getDate()}, {selectedDay.getFullYear()}
               {holiday.recurrence && holiday.recurrence !== "once" && ` · ${holiday.recurrence}`}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground/60">Recipient</label>
+            <label className="text-xs text-muted-foreground">Recipient</label>
             <Input
               placeholder="npub1... or user@domain.com"
               value={recipient}

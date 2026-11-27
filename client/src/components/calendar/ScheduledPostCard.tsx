@@ -26,8 +26,8 @@ import { getKindLabel, formatScheduledTime, type ScheduledPostWithDecrypted } fr
 const STATUS_COLORS: Record<string, { dot: string; badge: string; text: string }> = {
   pending: {
     dot: "bg-brand",
-    badge: "bg-foreground/[0.06] text-foreground/80 border-border/60",
-    text: "text-foreground/80",
+    badge: "bg-foreground/[0.06] text-foreground border-border/60",
+    text: "text-foreground",
   },
   publishing: {
     dot: "bg-blue-500",
@@ -122,7 +122,7 @@ function ContentRenderer({ content, expanded }: { content: string; expanded: boo
     return (
       <div className="space-y-1.5">
         {truncatedText && (
-          <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
             {truncatedText}
           </p>
         )}
@@ -156,7 +156,7 @@ function ContentRenderer({ content, expanded }: { content: string; expanded: boo
         )}
         {linkParts.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-[10px] text-sky-400/70 bg-sky-500/10 rounded-full px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 text-xs text-sky-400/70 bg-sky-500/10 rounded-full px-2 py-0.5">
               <LinkIcon className="w-2.5 h-2.5" />
               {linkParts.length} link{linkParts.length > 1 ? "s" : ""}
             </span>
@@ -173,7 +173,7 @@ function ContentRenderer({ content, expanded }: { content: string; expanded: boo
           const trimmed = part.value.trim();
           if (!trimmed) return null;
           return (
-            <p key={i} className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+            <p key={i} className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
               {part.value}
             </p>
           );
@@ -277,12 +277,12 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
             {isGiftWrap ? (
               <div className="flex items-center gap-2 mb-1.5">
                 <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <p className="text-sm text-foreground/80 leading-relaxed">
+                <p className="text-sm text-foreground leading-relaxed">
                   {fullContent}
                 </p>
               </div>
             ) : post.decryptFailed ? (
-              <p className="text-sm text-muted-foreground/50 italic mb-1.5">
+              <p className="text-sm text-muted-foreground italic mb-1.5">
                 Unable to decrypt — key may have been cleared
               </p>
             ) : fullContent ? (
@@ -290,7 +290,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
                 <ContentRenderer content={fullContent} expanded={expanded} />
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground/50 italic mb-1.5">Encrypted content</p>
+              <p className="text-sm text-muted-foreground italic mb-1.5">Encrypted content</p>
             )}
 
             <div className="flex items-center gap-2 text-[12px] text-muted-foreground flex-wrap">
@@ -339,7 +339,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
             {post.status === "failed" && (
               <div className="flex items-center gap-2 mt-1.5">
                 {post.failureReason && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-danger dark:text-red-400/70 min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-xs text-danger dark:text-red-400/70 min-w-0 flex-1">
                     <AlertCircle className="w-3 h-3 flex-shrink-0" />
                     <span className="break-words truncate">{post.failureReason}</span>
                   </div>
@@ -348,7 +348,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] border-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300 flex-shrink-0"
+                    className="h-6 px-2 text-xs border-red-500/20 text-red-700 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300 flex-shrink-0"
                     onClick={() => onRetry(post.id)}
                   >
                     <RefreshCw className="w-3 h-3 mr-1" />
@@ -403,7 +403,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-foreground"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 onClick={() => setShowReschedule(!showReschedule)}
                 title="Reschedule"
               >
@@ -412,7 +412,7 @@ export function ScheduledPostCard({ post, onCancel, onReschedule, onRetry }: Sch
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-red-700 dark:hover:text-red-400"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-700 dark:hover:text-red-400"
                 onClick={() => onCancel(post.id)}
                 title="Cancel"
               >

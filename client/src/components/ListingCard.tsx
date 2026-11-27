@@ -52,7 +52,7 @@ function VoucherChip({ pubkey }: { pubkey: string }) {
         <AvatarImage src={who.avatarUrl} alt={who.name} />
         <AvatarFallback className="bg-foreground/[0.08] text-foreground/80 text-[7px] font-semibold">{who.name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-[11px] font-medium truncate max-w-[110px]">{who.name}</span>
+      <span className="text-xs font-medium truncate max-w-[110px]">{who.name}</span>
     </span>
   );
 }
@@ -77,12 +77,12 @@ function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: str
     <div className="border-t border-border/40 pt-3 space-y-2" data-testid="listing-vouches">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1.5 text-[11px] font-medium text-success dark:text-emerald-400"
+        className="flex w-full items-center gap-1.5 text-xs font-medium text-success dark:text-emerald-400"
         data-testid="listing-vouches-toggle"
       >
         <BadgeCheck className="w-3.5 h-3.5" />
         Vouched for by {vouches.length} {vouches.length === 1 ? "person" : "people"} on the network
-        <ChevronDown className={`w-3.5 h-3.5 ml-auto text-muted-foreground/60 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && (
         <div className="space-y-2.5">
@@ -90,18 +90,18 @@ function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: str
             <div key={v.eventId} className="rounded-lg bg-muted/30 dark:bg-muted/15 px-3 py-2" data-testid={`listing-vouch-${v.eventId.slice(0, 8)}`}>
               <div className="flex items-center gap-2">
                 <VoucherChip pubkey={v.attesterPubkey} />
-                <span className="ml-auto text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+                <span className="ml-auto text-xs text-muted-foreground tabular-nums shrink-0">
                   {formatDistanceToNow(new Date(v.createdAt * 1000), { addSuffix: true })}
                 </span>
               </div>
               {v.content.trim() && (
-                <p className="mt-1 text-[12px] text-foreground/75 leading-relaxed line-clamp-2">{v.content.trim()}</p>
+                <p className="mt-1 text-[12px] text-foreground leading-relaxed line-clamp-2">{v.content.trim()}</p>
               )}
             </div>
           ))}
           <Link
             href={`/profile/${sellerNpub}`}
-            className="block text-[11px] text-brand hover:text-brand-strong transition-colors"
+            className="block text-xs text-brand hover:text-brand-strong transition-colors"
             data-testid="listing-vouches-all"
           >
             See all vouches on their profile →
@@ -114,7 +114,7 @@ function SellerVouches({ pubkey, sellerNpub }: { pubkey: string; sellerNpub: str
 
 function SoldChip() {
   return (
-    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
       Sold
     </span>
   );
@@ -178,7 +178,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
               )}
             </div>
             {listing.summary && <ListingDescription text={listing.summary} />}
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70 tabular-nums">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
               {listing.location && (
                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{listing.location}</span>
               )}
@@ -196,7 +196,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 </Avatar>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{seller.name}</p>
-                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
                     Seller
                     {sellerFlagged ? (
                       <span className="inline-flex items-center gap-1 text-destructive font-medium whitespace-nowrap truncate" data-testid="listing-seller-flagged">
@@ -239,7 +239,7 @@ export function ListingDialog({ listing, open, onOpenChange }: { listing: Listin
                 Files a standard NIP-56 report on the listing event itself. */}
             <button
               onClick={() => setReportOpen(true)}
-              className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-muted-foreground transition-colors"
               data-testid="listing-report"
             >
               <Flag className="w-3 h-3" />
@@ -304,7 +304,7 @@ export function ListingTile({ listing, onOpen, fluid = false }: { listing: Listi
         )}
       </div>
       <p className={`mt-1.5 font-medium text-foreground ${fluid ? "text-[13px] leading-snug line-clamp-2" : "text-xs truncate"}`}>{listing.title}</p>
-      <p className="text-[11px] text-muted-foreground tabular-nums truncate">
+      <p className="text-xs text-muted-foreground tabular-nums truncate">
         {listing.sold ? "Sold" : listing.price ? formatListingPrice(listing.price) : ""}
       </p>
     </button>

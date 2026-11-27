@@ -90,29 +90,29 @@ export function PublishedPostCard({ item }: { item: CalendarItemPublished }) {
           {(preview.hasImages || preview.hasAudio || preview.hasVideo || preview.hasLinks) && (
             <div className="flex items-center gap-2 mt-1.5">
               {preview.hasImages && (
-                <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
                   <Image className="w-3 h-3" /> Image
                 </span>
               )}
               {preview.hasAudio && (
-                <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
                   <Music className="w-3 h-3" /> Audio
                 </span>
               )}
               {preview.hasVideo && (
-                <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
                   <Film className="w-3 h-3" /> Video
                 </span>
               )}
               {preview.hasLinks && !preview.hasImages && !preview.hasAudio && !preview.hasVideo && (
-                <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/[0.06] rounded px-1.5 py-0.5">
                   <Link2 className="w-3 h-3" /> Link
                 </span>
               )}
             </div>
           )}
           <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {item.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>
             <span className="text-[12px] font-medium text-brand group-hover:text-brand-strong flex items-center gap-1 transition-colors">
@@ -149,7 +149,7 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
         <Radio className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[12px] bg-foreground/[0.06] text-foreground/80 border-border/60 font-medium">
+            <Badge variant="outline" className="text-[12px] bg-foreground/[0.06] text-foreground border-border/60 font-medium">
               {item.status === "live" ? "Live stream" : "Planned stream"}
             </Badge>
           </div>
@@ -164,7 +164,7 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
             </Avatar>
             <span className="text-xs text-gray-600 dark:text-gray-400">{displayName}</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             {item.starts && (
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
@@ -176,7 +176,7 @@ export function CreatorStreamCard({ item }: { item: CalendarItemCreatorStream })
           {item.hashtags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {item.hashtags.slice(0, 5).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-[11px] px-1.5 py-0 text-foreground/75 border-border/60">
+                <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0 text-foreground border-border/60">
                   #{tag}
                 </Badge>
               ))}
@@ -208,7 +208,7 @@ export function FeedEventCard({ item }: { item: CalendarItemSubscribed }) {
           {item.description && (
             <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-1.5"><Linkify text={item.description.slice(0, 200)} /></p>
           )}
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {isAllDay ? (
@@ -247,7 +247,7 @@ export function HolidayRow({ holiday, onShare }: { holiday: Holiday; onShare?: (
             href={holiday.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 flex items-center gap-1 mt-1 truncate"
+            className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 dark:hover:text-amber-300 flex items-center gap-1 mt-1 truncate"
           >
             <Link2 className="w-2.5 h-2.5 flex-shrink-0" />
             {holiday.url.replace(/^https?:\/\//, "").slice(0, 50)}

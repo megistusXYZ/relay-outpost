@@ -64,7 +64,7 @@ function AwarderName({ pubkey, large }: { pubkey: string; large?: boolean }) {
           <User className={`${large ? "w-3.5 h-3.5" : "w-2 h-2"} text-brand/50`} />
         </span>
       )}
-      <span className={`${large ? "text-sm font-medium text-foreground" : "text-[11px] text-muted-foreground"} truncate`}>{name}</span>
+      <span className={`${large ? "text-sm font-medium text-foreground" : "text-xs text-muted-foreground"} truncate`}>{name}</span>
     </Link>
   );
 }
@@ -155,17 +155,17 @@ function BadgeCard({ badge, showAccept, onAccept, accepting }: {
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           {/* A community's badge reads "from <community>"; a personal one names who gave it. */}
           {def.community ? (
-            <FromCommunity url={def.community} className="text-[11px] text-muted-foreground" />
+            <FromCommunity url={def.community} className="text-xs text-muted-foreground" />
           ) : (
             <>
-              <span className="text-[11px] text-muted-foreground">Given by</span>
+              <span className="text-xs text-muted-foreground">Given by</span>
               <AwarderName pubkey={badge.awarderPubkey} />
             </>
           )}
           {badge.awardedAt > 0 && (
             <>
               <span className="text-[11px] text-muted-foreground/50" aria-hidden="true">·</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(badge.awardedAt * 1000), { addSuffix: true })}
               </span>
             </>
@@ -323,7 +323,7 @@ export function ProfileBadgesSection({ badges, pubkey, onRefresh }: {
       </div>
       )}
       {isOwnProfile && unaccepted.length > 0 && !expanded && !arranging && (
-        <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-500/70 pl-1">
+        <p className="mt-2 text-xs text-amber-800 dark:text-amber-500/70 pl-1">
           {unaccepted.length} badge{unaccepted.length > 1 ? "s" : ""} waiting for you to show
         </p>
       )}
@@ -368,11 +368,11 @@ export function BadgeIcons({ badges, pubkey, community }: {
         </span>
       )}
       {more > 0 && (npub ? (
-        <Link href={`/profile/${npub}#badges`} className="text-[10px] text-muted-foreground hover:text-brand transition-colors ml-0.5" data-testid="badge-icons-more">
+        <Link href={`/profile/${npub}#badges`} className="text-xs text-muted-foreground hover:text-brand transition-colors ml-0.5" data-testid="badge-icons-more">
           +{more}
         </Link>
       ) : (
-        <span className="text-[10px] text-muted-foreground ml-0.5" data-testid="badge-icons-more">+{more}</span>
+        <span className="text-xs text-muted-foreground ml-0.5" data-testid="badge-icons-more">+{more}</span>
       ))}
     </span>
   );

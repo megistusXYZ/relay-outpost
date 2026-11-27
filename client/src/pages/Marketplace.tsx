@@ -56,7 +56,7 @@ function SellerLine({ pubkey, tier }: { pubkey: string; tier: string }) {
           <span className="text-[7px] font-bold text-brand">{name.slice(0, 1).toUpperCase()}</span>
         )}
       </span>
-      <span className="text-[11px] text-muted-foreground truncate">{name}</span>
+      <span className="text-xs text-muted-foreground truncate">{name}</span>
       {trusted && (
         <span
           className={`w-1.5 h-1.5 rounded-full shrink-0 ${tier === "strong" ? TIER_GLYPH.strong.className : TIER_GLYPH.moderate.className}`}
@@ -252,7 +252,7 @@ export default function Marketplace() {
               full-width field and a sideways-scrolling rail; desktop caps the
               field so the rail breathes beside the grid width. */}
           <div className="relative max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -263,7 +263,7 @@ export default function Marketplace() {
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground/60 hover:text-foreground"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground"
                 aria-label="Clear search"
                 data-testid="marketplace-search-clear"
               >
@@ -276,7 +276,7 @@ export default function Marketplace() {
               <button
                 key={s}
                 onClick={() => setSort(s)}
-                className={`h-7 px-3 rounded-full text-[11px] font-medium transition-colors ${sort === s ? "bg-foreground/[0.08] dark:bg-white/[0.08] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${sort === s ? "bg-foreground/[0.08] dark:bg-white/[0.08] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 data-testid={`marketplace-sort-${s}`}
               >
                 {s === "trusted" ? "Trusted first" : "Newest"}
@@ -300,7 +300,7 @@ export default function Marketplace() {
                   data-testid={`marketplace-category-${c.tag}`}
                 >
                   {c.tag}
-                  <span className={`ml-1.5 tabular-nums ${category === c.tag ? "text-primary-foreground/70" : "text-muted-foreground/50"}`}>{c.count}</span>
+                  <span className={`ml-1.5 tabular-nums ${category === c.tag ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{c.count}</span>
                 </button>
               ))}
             </div>
@@ -353,7 +353,7 @@ export default function Marketplace() {
           {more === "loading" ? (
             <span data-testid="marketplace-older-loading">Fetching older listings…</span>
           ) : more === "dry" ? (
-            <span data-testid="marketplace-end-dry">That's everything on the shelves — {loadedCount.toLocaleString()} listings.</span>
+            <span data-testid="marketplace-end-dry">That's everything on the shelves — {loadedCount.toLocaleString()} {loadedCount === 1 ? "listing" : "listings"}.</span>
           ) : (
             <>
               {more === "stalled" && <span data-testid="marketplace-older-stalled">The marketplace relay didn't answer.</span>}

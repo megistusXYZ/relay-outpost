@@ -35,7 +35,7 @@ export default function UsingContentCalendar() {
 
       <div className="mb-8">
         <div className="rounded-[20px] border border-border/60 bg-card p-5">
-          <p className="text-[15px] text-foreground/75 leading-relaxed">
+          <p className="text-[15px] text-foreground leading-relaxed">
             The Content Calendar is your command center for everything happening on Nostr — community events, meetups, live streams, holidays, and your own scheduled posts. This guide walks you through discovering events, subscribing to feeds, setting reminders, and managing your publishing timeline.
           </p>
           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/20">
@@ -53,7 +53,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Open the <strong>Account</strong> page → <strong>Calendar</strong>. You'll see a monthly grid view with all your events, pins, and subscriptions:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Navigate between months using the arrow controls</li>
                 <li>Tap any day to see its events in detail</li>
                 <li>Color-coded dots indicate different event types</li>
@@ -71,7 +71,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Find events happening across the Nostr network:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Use the <strong>search panel</strong> to find events by keyword or topic</li>
                 <li>Switch between <strong>All</strong> and <strong>Following</strong>, or narrow to a specific creator</li>
                 <li>Discover meetups, conferences, live streams, and community gatherings</li>
@@ -88,7 +88,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Found something you want to attend? RSVP or pin it to your calendar:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Tap an event to view its full details — time, location, description</li>
                 <li>Pin events to your personal calendar for quick access</li>
                 <li>Pinned events show up on your calendar grid with visual indicators</li>
@@ -106,7 +106,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Stay updated by subscribing to event feeds from communities and creators:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Tap <strong>Subscriptions</strong> in the calendar's menu</li>
                 <li>Add any public iCal/ICS feed URL</li>
                 <li>Subscribed events automatically appear on your calendar</li>
@@ -124,7 +124,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Never miss an event with the built-in reminder system:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Pick a lead time — 10 minutes, 30 minutes, or 1 hour before</li>
                 <li>Enable reminders per feed — each subscription has its own switch</li>
                 <li>Reminders arrive as encrypted messages when it's time</li>
@@ -141,7 +141,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>Host a meetup, schedule a live stream, or create a community gathering:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>Tap <strong>Create event</strong> on the calendar</li>
                 <li>Set a title, description, date, time, and optional location</li>
                 <li>Choose <strong>Public</strong> or <strong>Private</strong> — private events go straight to your invitees as encrypted messages and are never published</li>
@@ -158,7 +158,7 @@ export default function UsingContentCalendar() {
           description={
             <>
               <p>The calendar includes a holiday layer so you can see what's happening in the real world too:</p>
-              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground/70">
+              <ul className="list-disc list-inside space-y-1 text-[14px] text-foreground">
                 <li>A built-in set of holidays ships with the calendar — hide any you don't want, one by one</li>
                 <li>Holidays appear as subtle markers on your calendar grid</li>
                 <li>Add your own recurring dates with <strong>Create event</strong></li>

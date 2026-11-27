@@ -72,14 +72,14 @@ function CreatorRow({ creatorPubkey, onRemove }: { creatorPubkey: string; onRemo
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] text-foreground font-medium truncate">{displayName}</p>
-        <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate font-mono">
+        <p className="text-xs text-muted-foreground truncate font-mono">
           {shortenNpub(formatNpub(creatorPubkey))}
         </p>
       </div>
       <Button
         variant="ghost"
         size="sm"
-        className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 reveal-on-hover touch-target"
+        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 reveal-on-hover touch-target"
         aria-label={`Unsubscribe from ${displayName}`}
         title="Unsubscribe"
         onClick={() => onRemove(creatorPubkey, displayName)}
@@ -375,7 +375,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
             <Rss className="w-4 h-4 text-rose-400" />
             Feed Subscriptions
             {subscribedCount > 0 && (
-              <Badge variant="outline" className="text-[9px] bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 ml-1">
+              <Badge variant="outline" className="text-xs bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 ml-1">
                 {subscribedCount} active
               </Badge>
             )}
@@ -420,7 +420,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                     {[...subcategories.entries()].map(([subName, feeds]) => (
                       <div key={subName}>
                         {subcategories.size > 1 && (
-                          <p className="text-[12px] text-gray-400 dark:text-gray-500 font-medium px-2 pt-2 pb-1">{subName}</p>
+                          <p className="text-[12px] text-muted-foreground font-medium px-2 pt-2 pb-1">{subName}</p>
                         )}
                         {feeds.map((feed) => {
                           const isSubscribed = subscribedIds.has(feed.id);
@@ -464,7 +464,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                   {orphanedFeeds.length}
                 </Badge>
               </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 px-1 pb-2">
+              <p className="text-xs text-muted-foreground px-1 pb-2">
                 These feeds are no longer available in the catalog. Remove them and subscribe to updated feeds.
               </p>
               <div className="space-y-1">
@@ -476,7 +476,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                     <span className="text-sm">{feed.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-amber-700 dark:text-amber-300 font-medium truncate">{feed.name}</p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate font-mono">{feed.url}</p>
+                      <p className="text-xs text-muted-foreground truncate font-mono">{feed.url}</p>
                     </div>
                     <Button
                       variant="ghost"
@@ -503,7 +503,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-[10px] text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300"
+                  className="h-6 text-xs text-brand hover:text-brand-strong"
                   onClick={() => setShowCustomForm(true)}
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -566,7 +566,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
 
             {customFeeds.length === 0 && !showCustomForm ? (
               <div className="px-1 pb-2 space-y-2">
-                <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Add any public iCal/ICS feed URL to show events on your calendar.
                 </p>
               </div>
@@ -580,12 +580,12 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                     <span className="text-sm">{feed.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-rose-700 dark:text-rose-300 font-medium truncate">{feed.name}</p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate font-mono">{feed.url}</p>
+                      <p className="text-xs text-muted-foreground truncate font-mono">{feed.url}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 reveal-on-hover touch-target"
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 reveal-on-hover touch-target"
                       aria-label="Remove this calendar feed"
                       title="Remove feed"
                       onClick={() => handleRemoveCustom(feed)}
@@ -605,7 +605,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                 Creator Streams
               </span>
               {subscribedCreators.length > 0 && (
-                <Badge variant="outline" className="text-[11px] bg-foreground/[0.06] text-foreground/80 border-border/60">
+                <Badge variant="outline" className="text-xs bg-foreground/[0.06] text-foreground border-border/60">
                   {subscribedCreators.length}
                 </Badge>
               )}
@@ -670,13 +670,13 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                             {name || `${event.pubkey.slice(0, 12)}...`}
                           </p>
                           {nip05 && (
-                            <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">{nip05}</p>
+                            <p className="text-xs text-muted-foreground truncate">{nip05}</p>
                           )}
                         </div>
                       </button>
                     );
                   })}
-                  <div className="px-3 py-1.5 text-[12px] text-gray-400 dark:text-gray-500 text-center font-medium">
+                  <div className="px-3 py-1.5 text-[12px] text-muted-foreground text-center font-medium">
                     {creatorSearching ? "Searching..." : "Select a creator"}
                   </div>
                 </div>
@@ -684,7 +684,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
             </div>
 
             {subscribedCreators.length === 0 ? (
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 px-1 pb-2">
+              <p className="text-xs text-muted-foreground px-1 pb-2">
                 Subscribe to creators to see their planned streams on your calendar.
               </p>
             ) : (
@@ -708,7 +708,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
               </div>
 
               <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] mb-2">
-                <span className="text-[11px] text-gray-600 dark:text-gray-300 flex-shrink-0">Notify me</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300 flex-shrink-0">Notify me</span>
                 <div className="flex items-center gap-1 flex-1 justify-end">
                   {FEED_REMINDER_OPTIONS.map((opt) => {
                     const active = feedReminders.includes(opt.value);
@@ -716,10 +716,10 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
                       <button
                         key={opt.value}
                         onClick={() => toggleFeedReminder(opt.value)}
-                        className={`px-2 py-0.5 text-[10px] rounded-md border transition-colors touch-manipulation ${
+                        className={`px-2 py-0.5 text-xs rounded-md border transition-colors touch-manipulation ${
                           active
                             ? "border-rose-500/40 bg-rose-500/10 text-rose-500 dark:text-rose-400"
-                            : "border-gray-200 dark:border-white/10 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                            : "border-gray-200 dark:border-white/10 text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300"
                         }`}
                       >
                         {opt.label}
@@ -731,7 +731,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
 
               {feedReminders.length > 0 && (
                 <>
-                  <p className="text-[9px] text-gray-400 dark:text-gray-500 px-2 mb-2">
+                  <p className="text-xs text-muted-foreground px-2 mb-2">
                     Select which feeds send you DM reminders before events
                   </p>
                   <div className="space-y-0.5">
@@ -766,7 +766,7 @@ export function SubscriptionManager({ open, onOpenChange, pubkey, onChanged, onC
               )}
 
               {feedReminders.length === 0 && (
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 px-2">
+                <p className="text-xs text-muted-foreground px-2">
                   Select a time above to enable DM reminders before feed events
                 </p>
               )}

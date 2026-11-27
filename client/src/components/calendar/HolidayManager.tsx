@@ -596,7 +596,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
           <button
             onClick={() => setTab("create")}
             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-              tab === "create" ? "bg-sky-500/10 text-sky-400" : "text-muted-foreground/60 hover:text-foreground/80"
+              tab === "create" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Create event
@@ -604,7 +604,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
           <button
             onClick={() => setTab("custom")}
             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-              tab === "custom" ? "bg-amber-500/10 text-amber-800 dark:text-amber-400" : "text-muted-foreground/60 hover:text-foreground/80"
+              tab === "custom" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             My Reminders ({customHolidays.length})
@@ -612,7 +612,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
           <button
             onClick={() => setTab("builtin")}
             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-              tab === "builtin" ? "bg-amber-500/10 text-amber-800 dark:text-amber-400" : "text-muted-foreground/60 hover:text-foreground/80"
+              tab === "builtin" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Holidays ({builtInHolidays.length - hiddenIds.length}/{builtInHolidays.length})
@@ -625,7 +625,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
               {!signer ? (
                 <div className="text-center py-8">
                   <CalendarPlus className="w-8 h-8 text-muted-foreground/15 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground/40">Sign in to create events</p>
+                  <p className="text-xs text-muted-foreground">Sign in to create events</p>
                 </div>
               ) : (
                 <div className="border border-sky-500/20 rounded-lg p-3 bg-sky-500/5 space-y-2.5">
@@ -651,9 +651,9 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         className="w-full h-9 text-sm rounded-md border border-input bg-background pl-8 pr-3 appearance-none [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 transition-colors"
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground/40 flex-shrink-0">to</span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">to</span>
                     <div className="relative flex-1">
-                      <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 pointer-events-none" />
+                      <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                       <input
                         type="date"
                         value={eventEndDate}
@@ -679,9 +679,9 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                           className="w-full h-9 text-sm rounded-md border border-input bg-background pl-8 pr-3 appearance-none [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 transition-colors"
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground/40 flex-shrink-0">to</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">to</span>
                       <div className="relative flex-1">
-                        <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 pointer-events-none" />
+                        <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                         <input
                           type="time"
                           value={eventEndTime}
@@ -736,15 +736,15 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                       ) : (
                         <Globe className="w-3.5 h-3.5 text-muted-foreground/40" />
                       )}
-                      <span className="text-xs text-muted-foreground/60">Visibility</span>
+                      <span className="text-xs text-muted-foreground">Visibility</span>
                     </div>
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => setEventPrivate(false)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-md border transition-colors ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-colors ${
                           !eventPrivate
-                            ? "border-sky-500/40 bg-sky-500/10 text-sky-400"
-                            : "border-border/30 text-muted-foreground/50 hover:text-foreground/70"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border/30 text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <Globe className="w-3 h-3" />
@@ -752,10 +752,10 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                       </button>
                       <button
                         onClick={() => setEventPrivate(true)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-md border transition-colors ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-colors ${
                           eventPrivate
-                            ? "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-400"
-                            : "border-border/30 text-muted-foreground/50 hover:text-foreground/70"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border/30 text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <Lock className="w-3 h-3" />
@@ -772,9 +772,9 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-muted-foreground/40" />
-                      <span className="text-xs text-muted-foreground/60">Participants</span>
+                      <span className="text-xs text-muted-foreground">Participants</span>
                       {selectedParticipants.length > 0 && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                        <Badge variant="outline" className="text-xs h-4 px-1.5">
                           {selectedParticipants.length}
                         </Badge>
                       )}
@@ -785,7 +785,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         {selectedParticipants.map((pk) => (
                           <div
                             key={pk}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[10px]"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-foreground text-xs"
                           >
                             {getProfilePicture(pk) && (
                               <img src={getProfilePicture(pk)} className="w-3 h-3 rounded-full" alt={`${getProfileDisplayName(pk)}'s avatar`} />
@@ -803,12 +803,12 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                     )}
 
                     <div className="relative">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/40" />
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                       <Input
                         placeholder="Search by name or npub..."
                         value={participantSearch}
                         onChange={(e) => handleParticipantSearch(e.target.value)}
-                        className="h-7 text-[11px] pl-7"
+                        className="h-7 text-xs pl-7"
                       />
                       {searchingParticipants && (
                         <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-sky-400 animate-spin" />
@@ -831,13 +831,13 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                             ) : (
                               <div className="w-4 h-4 rounded-full bg-sky-500/20 flex-shrink-0" />
                             )}
-                            <span className="text-[11px] text-foreground/80 truncate flex-1">{p.name}</span>
+                            <span className="text-xs text-foreground truncate flex-1">{p.name}</span>
                             {p.isFollow && (
-                              <span className="text-[9px] text-sky-400/60 flex-shrink-0">following</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">following</span>
                             )}
                           </button>
                         ))}
-                        <div className="px-2 py-1 text-[11px] text-muted-foreground text-center">
+                        <div className="px-2 py-1 text-xs text-muted-foreground text-center">
                           {searchingParticipants ? "Searching..." : "Select a contact"}
                         </div>
                       </div>
@@ -851,7 +851,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <Bell className="w-3.5 h-3.5 text-muted-foreground/40" />
-                        <span className="text-xs text-muted-foreground/60">Reminders</span>
+                        <span className="text-xs text-muted-foreground">Reminders</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {REMINDER_OPTIONS.map((opt) => {
@@ -864,10 +864,10 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                                   active ? prev.filter((r) => r !== opt.value) : [...prev, opt.value]
                                 );
                               }}
-                              className={`px-2 py-1 text-[10px] rounded-md border transition-colors ${
+                              className={`px-2 py-1 text-xs rounded-md border transition-colors ${
                                 active
-                                  ? "border-sky-500/40 bg-sky-500/10 text-sky-400"
-                                  : "border-border/30 text-muted-foreground/50 hover:text-foreground/70"
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border/30 text-muted-foreground hover:text-foreground"
                               }`}
                             >
                               {opt.label}
@@ -1022,8 +1022,8 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
 
               {customHolidays.length === 0 && !showAddForm ? (
                 <div className="text-center py-8">
-                  <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground/70" />
-                  <p className="text-xs text-muted-foreground/40">No date reminders yet</p>
+                  <OttoEmpty mood="quiet" size={72} className="mx-auto mb-2 text-foreground" />
+                  <p className="text-xs text-muted-foreground">No date reminders yet</p>
                   <p className="text-[12px] text-muted-foreground mt-1">
                     Add birthdays, anniversaries, or any date that matters to you.
                   </p>
@@ -1037,7 +1037,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                     >
                       <span className="text-base w-6 text-center flex-shrink-0">{h.emoji || "📌"}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground/80 truncate">{h.name}</p>
+                        <p className="text-sm text-foreground truncate">{h.name}</p>
                         <p className="text-[12px] text-muted-foreground">
                           {MONTH_NAMES[h.month]} {h.day}
                           {" · "}
@@ -1051,7 +1051,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                             href={h.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-amber-500 hover:text-amber-800 dark:hover:text-amber-400 flex items-center gap-0.5 mt-0.5 truncate"
+                            className="text-xs text-amber-500 hover:text-amber-800 dark:hover:text-amber-400 flex items-center gap-0.5 mt-0.5 truncate"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Link className="w-2.5 h-2.5 flex-shrink-0" />
@@ -1063,7 +1063,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-amber-800 dark:hover:text-amber-400"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-amber-800 dark:hover:text-amber-400"
                           onClick={() => handleEdit(h)}
                           aria-label={`Edit ${h.name}`}
                         >
@@ -1072,7 +1072,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-red-700 dark:hover:text-red-400"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-red-700 dark:hover:text-red-400"
                           onClick={() => handleDelete(h.id)}
                           aria-label={`Delete ${h.name}`}
                         >
@@ -1104,7 +1104,7 @@ export function HolidayManager({ open, onOpenChange, pubkey, year, onChanged, si
                   >
                     <span className="text-base w-6 text-center flex-shrink-0">{h.emoji || "📅"}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm truncate ${isHidden ? "text-muted-foreground/60 line-through" : "text-foreground/80"}`}>
+                      <p className={`text-sm truncate ${isHidden ? "text-muted-foreground line-through" : "text-foreground"}`}>
                         {h.name}
                       </p>
                       <p className="text-[12px] text-muted-foreground">
